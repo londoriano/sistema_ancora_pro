@@ -35,9 +35,9 @@
                     <h5 class="alert-heading fw-bold m-0">Risco de Perda de Dados!</h5>
                     <p class="mb-0 small">O último backup foi realizado há mais de <strong>7 dias</strong> (ou nunca foi feito).</p>
                 </div>
-                <button class="btn btn-danger fw-bold ms-auto px-4" onclick="modalAdmin.show()">
-                    <i class="bi bi-download"></i> FAZER BACKUP AGORA
-                </button>
+               <button class="btn btn-danger fw-bold ms-auto px-4" onclick="exportarJSON()">
+    <i class="bi bi-download"></i> FAZER BACKUP AGORA
+</button>
             </div>
         </div>
 
@@ -217,9 +217,6 @@
                 </div>
                 <div class="modal-body">
                     <p class="fw-bold mb-2">Backup e Restauração</p>
-                    <div class="mb-3">
-                        <label class="small text-muted">Senha de Segurança:</label>
-                        <input type="password" id="senhaAdminRestore" class="form-control mb-2" placeholder="Senha Mestra">
                         <label class="small text-muted">Arquivo JSON:</label>
                         <input type="file" id="arquivoJson" class="form-control" accept=".json">
                     </div>
@@ -459,40 +456,102 @@
             });
         }
         
-        function exportarJSON() {
-            const db = getDB();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
-            const node = document.createElement('a');
-            node.setAttribute("href", dataStr);
-            node.setAttribute("download", `backup_ancora_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(node);
-            node.click();
-            node.remove();
-            localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
-            exibirMensagem("Backup gerado! Contador resetado.", "sucesso");
+  // --- FUNÇÃO DE BACKUP CORRIGIDA (VERSÃO PRO) ---
+function exportarJSON() {
+    try {
+        // 1. Verifica se a chave do banco está acessível (vinda do app.js)
+        if (typeof DB_KEY === 'undefined') {
+            alert("Erro: O arquivo app.js não foi carregado corretamente.");
+            return;
+        }
+
+        // 2. Recupera os dados brutos do LocalStorage
+        const dados = localStorage.getItem(DB_KEY);
+        
+        if (!dados) {
+            exibirMensagem("O banco de dados está vazio. Nada para salvar.", "aviso");
+            return;
+        }
+
+        // 3. Cria o arquivo virtual para download (BLOB)
+        const blob = new Blob([dados], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // 4. Cria um link invisível e força o clique
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `backup_ancora_${new Date().toISOString().split('T')[0]}.json`; // Nome: backup_ancora_2026-01-06.json
+        document.body.appendChild(link);
+        link.click();
+        
+        // 5. Limpeza e Feedback
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
+
+        // 6. Registra que o backup foi feito (para sumir o alerta vermelho)
+        localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+        
+        // Atualiza a interface se a função existir
+        if (typeof verificarStatusBackup === 'function') {
             verificarStatusBackup();
         }
 
-        function restaurarBackup() {
-            const senha = document.getElementById('senhaAdminRestore').value;
-            const fileInput = document.getElementById('arquivoJson');
-            if(senha !== SENHA_MESTRA) { exibirMensagem("Senha incorreta!", "erro"); return; }
-            if(fileInput.files.length === 0) { exibirMensagem("Selecione um arquivo JSON!", "aviso"); return; }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    if(!Array.isArray(json)) throw new Error("Formato inválido");
-                    saveDB(json);
-                    localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
-                    modalAdmin.hide(); 
-                    exibirMensagem(`Backup restaurado! ${json.length} registros carregados.`, "sucesso", () => location.reload());
-                } catch(err) {
-                    exibirMensagem("Erro no arquivo. Verifique o formato.", "erro");
-                }
-            };
-            reader.readAsText(fileInput.files[0]);
+        // Fecha modal se estiver aberto e exibe sucesso
+        if (typeof modalAdmin !== 'undefined') modalAdmin.hide();
+        exibirMensagem("Backup baixado com sucesso!", "sucesso");
+
+    } catch (erro) {
+        console.error("Erro no backup:", erro);
+        alert("Ocorreu um erro ao tentar baixar o backup: " + erro.message);
+    }
+}
+
+        // --- FUNÇÃO DE RESTAURAÇÃO (VERSÃO PRO - SEM SENHA) ---
+function restaurarBackup() {
+    const fileInput = document.getElementById('arquivoJson');
+    
+    // 1. Verifica apenas se o arquivo foi selecionado
+    if(fileInput.files.length === 0) { 
+        exibirMensagem("Selecione um arquivo JSON para restaurar!", "aviso"); 
+        return; 
+    }
+
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            // 2. Lê e valida o JSON
+            const json = JSON.parse(e.target.result);
+            
+            if(!Array.isArray(json)) {
+                throw new Error("O arquivo selecionado não tem o formato correto de banco de dados.");
+            }
+
+            // 3. Salva no navegador (Sobrescreve tudo)
+            saveDB(json);
+            
+            // 4. Atualiza registro de data
+            localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+            
+            // 5. Fecha modal e recarrega
+            if (typeof modalAdmin !== 'undefined') modalAdmin.hide(); 
+            
+            exibirMensagem(
+                `Backup restaurado com sucesso!<br><strong>${json.length} clientes</strong> recuperados.`, 
+                "sucesso", 
+                () => location.reload() // Recarrega a página para mostrar os dados
+            );
+
+        } catch(err) {
+            console.error(err);
+            exibirMensagem("Erro ao ler o arquivo.<br>Certifique-se de que é um backup válido do Sistema Âncora.", "erro");
         }
+    };
+
+    reader.readAsText(fileInput.files[0]);
+}
 
         aplicarFiltros();
         verificarStatusBackup();
