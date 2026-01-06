@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Âncora Consultoria Financeira</title>
+    <title>Âncora Consultoria PRO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -10,75 +10,39 @@
 <body class="bg-login d-flex align-items-center justify-content-center">
 
    <div class="col-md-4 glass-panel p-5 text-center">
-        <h3 class="mb-4 fw-bold text-dark">ÂNCORA <span class="text-primary">CONSULTORIA</span></h3>
-        <p class="text-muted mb-4 small">Sistema de Gestão Privada</p>
+        <div class="mb-4">
+            <i class="bi bi-gem text-warning" style="font-size: 3rem;"></i>
+        </div>
+        <h3 class="mb-2 fw-bold text-dark">ÂNCORA <span class="text-primary">CONSULTORIA</span></h3>
+        <p class="text-muted mb-5 small text-uppercase letter-spacing-1">Sistema de Gestão Profissional</p>
         
-        <div class="mb-3 text-start">
-            <label class="form-label fw-bold">Senha de Acesso</label>
-            <div class="input-group">
-                <input type="password" id="senhaInput" class="form-control form-control-lg" placeholder="••••••••">
-                <button class="btn btn-outline-secondary" type="button" onclick="toggleSenha()">
-                    <i class="bi bi-eye" id="iconeOlho"></i>
-                </button>
-            </div>
+        <div class="d-grid gap-2">
+            <button onclick="acessarSistema()" class="btn btn-lg btn-primary fw-bold shadow-sm">
+                <i class="bi bi-box-arrow-in-right"></i> ACESSAR SISTEMA
+            </button>
         </div>
         
-        <button onclick="tentarLogin()" class="btn btn-primary w-100 btn-lg mb-3">Acessar Sistema</button>
-        
-        <div id="erroMsg" class="alert alert-danger mt-2" style="display:none"></div>
-
-        <div id="licencaMsg" class="mt-4 text-muted" style="font-size: 0.75rem; opacity: 0.8;">
-            Verificando licença...
+        <div class="mt-4 text-muted small opacity-50">
+            Versão 2.0 PRO • Licença Vitalícia
         </div>
     </div>
 
     <footer>
-        Âncora Consultoria Financeira 2026 &copy; Todos os direitos reservados.
+        Âncora Consultoria Financeira &copy; Todos os direitos reservados.
     </footer>
 
     <script src="app.js"></script>
+
     <script>
-        function toggleSenha() {
-            const input = document.getElementById('senhaInput');
-            const icon = document.getElementById('iconeOlho');
-            if (input.type === "password") {
-                input.type = "text";
-                icon.classList.remove('bi-eye');
-                icon.classList.add('bi-eye-slash');
-            } else {
-                input.type = "password";
-                icon.classList.remove('bi-eye-slash');
-                icon.classList.add('bi-eye');
-            }
-        }
+        // O app.js já vai rodar verificarAtivacao() no window.onload.
+        // Se não estiver ativado, este HTML será substituído pela tela de bloqueio antes do usuário piscar.
 
-        function tentarLogin() {
-            const senha = document.getElementById('senhaInput').value;
-            const msg = document.getElementById('erroMsg');
-            let erros = parseInt(localStorage.getItem(TENTATIVAS_KEY) || 0);
+        const SESSAO_KEY_LOCAL = "consultoria_logado_pro"; // Mesmo nome do app.js
 
-            if (senha === SENHA_MESTRA) {
-                localStorage.setItem(TENTATIVAS_KEY, 0); 
-                sessionStorage.setItem(SESSAO_KEY, "true");
-                window.location.href = 'clientes.html';
-            } else {
-                erros++;
-                localStorage.setItem(TENTATIVAS_KEY, erros);
-                msg.style.display = 'block';
-                if (erros >= 10) {
-                    localStorage.removeItem(DB_KEY);
-                    localStorage.setItem(TENTATIVAS_KEY, 0);
-                    msg.innerHTML = "<strong>SISTEMA RESETADO.</strong><br>Dados apagados por segurança.";
-                } else {
-                    msg.innerText = `Senha Incorreta. Tentativa ${erros}/10.`;
-                    document.getElementById('senhaInput').value = "";
-                }
-            }
+        function acessarSistema() {
+            sessionStorage.setItem(SESSAO_KEY_LOCAL, "true");
+            window.location.href = 'clientes.html';
         }
-        
-        document.getElementById('senhaInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') tentarLogin();
-        });
     </script>
 </body>
 </html>
