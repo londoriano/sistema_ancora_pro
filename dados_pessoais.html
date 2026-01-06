@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Perfil do Cliente</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .label-detalhe { font-size: 0.7rem; text-transform: uppercase; color: #6c757d; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .valor-detalhe { font-size: 1rem; font-weight: 500; color: #212529; margin-bottom: 12px; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; }
+        .card-leitura { background-color: #fff; border-top: 4px solid #0d6efd; }
+        .bg-obs { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; border-radius: 4px; font-size: 0.9rem; }
+        .list-read-item { font-size: 0.85rem; border-bottom: 1px dashed #e9ecef; padding: 4px 0; display: flex; justify-content: space-between; }
+        .list-read-item:last-child { border-bottom: none; }
+        .section-header-read { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #0d6efd; margin-bottom: 8px; border-bottom: 2px solid #e9ecef; padding-bottom: 4px; }
+    </style>
+</head>
+<body>
+
+    <div id="alertaNaoSalvo" class="alert alert-warning text-center m-0 hidden">
+        ⚠️ <strong>ALTERAÇÕES PENDENTES!</strong> Salve antes de sair.
+    </div>
+
+    <nav class="navbar navbar navbar-custom px-4 sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler bg-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand text-white" href="#" id="headerNomeCliente">Perfil</a>
+            <div class="d-flex gap-2 ms-auto">
+                <button class="btn btn-outline-light btn-sm" onclick="voltarIndex()"><i class="bi bi-arrow-return-left"></i> Voltar</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="menuLateral">
+        <div class="offcanvas-header bg-dark text-white">
+            <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral"></div>
+    </div>
+
+    <div class="container mt-4 mb-5 pb-5">
+        
+        <div class="card card-leitura shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div>
+                        <h2 class="fw-bold text-primary mb-0" id="readNome">-</h2>
+                        <span class="badge bg-secondary" id="readData">-</span>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleEdicao()">
+                        <i class="bi bi-pencil-square"></i> Editar Dados
+                    </button>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="label-detalhe">Email</div>
+                        <div class="valor-detalhe text-break" id="readEmail">-</div>
+                        <div class="label-detalhe">Telefone</div>
+                        <div class="valor-detalhe" id="readTel">-</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label-detalhe">Profissão</div>
+                        <div class="valor-detalhe" id="readProfissao">-</div>
+                        <div class="label-detalhe">Estado Civil / Filhos</div>
+                        <div class="valor-detalhe"><span id="readCivil">-</span> / <span id="readFilhos">-</span></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label-detalhe">Renda Mensal</div>
+                        <div class="valor-detalhe text-success fw-bold" id="readRenda">-</div>
+                    </div>
+                    <div class="col-md-3">
+                         <div class="bg-obs h-100">
+                            <div class="label-detalhe text-warning-emphasis mb-1">Observações / Perfil</div>
+                            <div class="fst-italic text-dark small" id="readObs">Sem observações.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row gx-5 mt-4 pt-3 border-top">
+                    <div class="col-md-4 mb-3">
+                        <div class="section-header-read">🎯 Objetivos</div>
+                        <div id="viewListObjetivos" class="text-muted small fst-italic">Vazio</div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <div class="section-header-read">💸 Fluxo Estimado</div>
+                        <div class="mb-2">
+                            <strong class="small text-danger">Fixos:</strong>
+                            <div id="viewListFixos" class="text-muted small fst-italic">Vazio</div>
+                        </div>
+                        <div>
+                            <strong class="small text-warning-emphasis">Variáveis:</strong>
+                            <div id="viewListVariaveis" class="text-muted small fst-italic">Vazio</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <div class="mb-3">
+                            <div class="section-header-read text-success">📈 Investimentos</div>
+                            <div id="viewListInvestimentos" class="text-muted small fst-italic">Vazio</div>
+                        </div>
+                        <div>
+                            <div class="section-header-read text-danger">💳 Dívidas</div>
+                            <div id="viewListDividas" class="text-muted small fst-italic">Vazio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="sectionEditor" class="d-none">
+            <div class="card shadow-sm border-0 border-top border-warning border-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="m-0 text-warning-emphasis"><i class="bi bi-pencil-fill"></i> Modo de Edição</h5>
+                    <button class="btn btn-success btn-sm fw-bold" onclick="salvarAlteracoes()"><i class="bi bi-save"></i> SALVAR TUDO</button>
+                </div>
+                <div class="card-body p-4">
+                    <form id="formDados" onchange="marcarComoSujo()">
+                        
+                        <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-person-badge"></i> Dados Cadastrais</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Observações Gerais</label>
+                                <textarea name="observacoesGerais" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Renda Mensal (R$)</label>
+                                <input type="number" name="rendaMensal" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Profissão</label>
+                                <input type="text" name="profissao" class="form-control">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Estado Civil</label>
+                                <select name="estadoCivil" class="form-select">
+                                    <option value="">Selecione...</option>
+                                    <option value="Solteiro">Solteiro</option>
+                                    <option value="Casado">Casado</option>
+                                    <option value="Divorciado">Divorciado</option>
+                                    <option value="Viuvo">Viúvo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Filhos</label>
+                                <select name="temFilhos" class="form-select">
+                                    <option value="Nao">Não</option>
+                                    <option value="Sim">Sim</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="text-muted">
+
+                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-clipboard2-pulse"></i> Diagnóstico Inicial & Proteção</h6>
+                        <div class="row g-3 mb-4 bg-light p-3 rounded border">
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-uppercase">Por que buscou uma consultoria financeira?</label>
+                                <input type="text" name="motivoConsultoria" class="form-control" placeholder="Objetivo principal ou dor atual...">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Quanto poupa por mês? (R$)</label>
+                                <input type="text" name="poupancaMensal" class="form-control" placeholder="R$ 0,00">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Faz Fluxo de Caixa?</label>
+                                <select name="fazFluxo" class="form-select">
+                                    <option value="">-</option>
+                                    <option value="Sim">Sim, registra tudo</option>
+                                    <option value="Mais ou menos">Mais ou menos</option>
+                                    <option value="Nao">Não registra nada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Se paga primeiro?</label>
+                                <select name="pagaPrimeiro" class="form-select">
+                                    <option value="">-</option>
+                                    <option value="Sim">Sim, é prioridade</option>
+                                    <option value="As vezes">Às vezes</option>
+                                    <option value="Nao">Não, sobra nada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Relacionamento com dinheiro?</label>
+                                <select name="relacaoDinheiro" class="form-select">
+                                    <option value="">-</option>
+                                    <option value="Tranquilo">Tranquilo / Controlado</option>
+                                    <option value="Ansioso">Ansioso / Preocupado</option>
+                                    <option value="Consumista">Consumista / Impulsivo</option>
+                                    <option value="Evitativo">Evitativo (Não gosta de olhar)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Nível de Conhecimento Financeiro</label>
+                                <select name="nivelConhecimento" class="form-select">
+                                    <option value="Iniciante">Iniciante</option>
+                                    <option value="Basico">Básico</option>
+                                    <option value="Intermediario">Intermediário</option>
+                                    <option value="Avancado">Avançado</option>
+                                </select>
+                            </div>
+                            <div class="col-12"><hr class="my-2"></div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Tem Plano de Saúde?</label>
+                                <select name="temPlanoSaude" class="form-select">
+                                    <option value="Nao">Não</option>
+                                    <option value="Sim">Sim</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Seguro de Bens (Auto/Casa)?</label>
+                                <select name="temSeguroBens" class="form-select">
+                                    <option value="Nao">Não</option>
+                                    <option value="Sim">Sim</option>
+                                    <option value="Parcial">Parcial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Seguro de Vida/Acidentes?</label>
+                                <select name="temSeguroVida" class="form-select">
+                                    <option value="Nao">Não</option>
+                                    <option value="Sim">Sim</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold">Investe p/ Aposentadoria?</label>
+                                <select name="investeAposentadoria" class="form-select">
+                                    <option value="Nao">Não</option>
+                                    <option value="Sim">Sim</option>
+                                    <option value="Previdencia">Previdência Privada</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-list-check"></i> Levantamento Rápido</h6>
+                        <div class="row mt-2">
+                            <div class="col-12 mb-4">
+                                <h6 class="fw-bold text-primary small">Objetivos</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="objTitulo" class="form-control form-control-sm" placeholder="Objetivo">
+                                    <input type="number" id="objValor" class="form-control form-control-sm" placeholder="Valor">
+                                    <input type="text" id="objPrazo" class="form-control form-control-sm" placeholder="Prazo">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="addNaLista('objetivos')">+</button>
+                                </div>
+                                <table class="table table-sm table-bordered mini-table"><tbody id="lista-objetivos"></tbody></table>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <h6 class="fw-bold small">Gastos Fixos</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="gastoFixoNome" class="form-control form-control-sm" placeholder="Ex: Aluguel">
+                                    <input type="number" id="gastoFixoValor" class="form-control form-control-sm" placeholder="Valor">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addNaLista('gastosFixos')">+</button>
+                                </div>
+                                <table class="table table-sm table-bordered mini-table"><tbody id="lista-gastosFixos"></tbody></table>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <h6 class="fw-bold small">Gastos Variáveis</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="gastoVarNome" class="form-control form-control-sm" placeholder="Ex: Lazer">
+                                    <input type="number" id="gastoVarValor" class="form-control form-control-sm" placeholder="Valor">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="addNaLista('gastosVariaveis')">+</button>
+                                </div>
+                                <table class="table table-sm table-bordered mini-table"><tbody id="lista-gastosVariaveis"></tbody></table>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="fw-bold small">Dívidas (Rápido)</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="divTitulo" class="form-control form-control-sm" placeholder="Desc">
+                                    <input type="number" id="divValor" class="form-control form-control-sm" placeholder="Val">
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="addNaLista('dividas')">+</button>
+                                </div>
+                                <table class="table table-sm table-bordered mini-table"><tbody id="lista-dividas"></tbody></table>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="fw-bold small">Investimentos (Rápido)</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" id="invOnde" class="form-control form-control-sm" placeholder="Onde">
+                                    <input type="number" id="invValor" class="form-control form-control-sm" placeholder="Total">
+                                    <button type="button" class="btn btn-success btn-sm" onclick="addNaLista('investimentos')">+</button>
+                                </div>
+                                <table class="table table-sm table-bordered mini-table"><tbody id="lista-investimentos"></tbody></table>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info d-flex align-items-center mt-4 border-info shadow-sm" role="alert">
+                            <div class="me-3 fs-3 text-info"><i class="bi bi-folder-fill"></i></div>
+                            <div>
+                                <h6 class="alert-heading fw-bold mb-1">Checklist de Documentos</h6>
+                                <p class="mb-0 small">Caso o cliente possua, solicite com antecedência para avaliação:</p>
+                                <ul class="mb-0 small ps-3 mt-1">
+                                    <li>Todas as apólices de seguros (Vida, Carro, Casa)</li>
+                                    <li>Certificado / Extrato da previdência privada</li>
+                                    <li>Última declaração de Imposto de Renda Completa</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('id');
+        let currentClient = null;
+        let isDirty = false;
+        let listasDados = { objetivos: [], dividas: [], investimentos: [], gastosFixos: [], gastosVariaveis: [] };
+
+        function carregarDados() {
+            const db = getDB();
+            currentClient = db.find(c => c.id === clientId);
+
+            if (!currentClient) {
+                exibirMensagem("Cliente não encontrado!", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
+
+            document.getElementById('headerNomeCliente').innerText = "Perfil: " + currentClient.nome;
+
+            document.getElementById('readNome').innerText = currentClient.nome;
+            document.getElementById('readData').innerText = "Desde: " + (currentClient.dataDiagnostico ? currentClient.dataDiagnostico.split('-').reverse().join('/') : '-');
+            document.getElementById('readEmail').innerText = currentClient.email || '-';
+            document.getElementById('readTel').innerText = currentClient.telefone || '-';
+            
+            const dados = currentClient.dadosPessoais || {};
+            
+            document.getElementById('readProfissao').innerText = dados.profissao || '-';
+            document.getElementById('readCivil').innerText = dados.estadoCivil || '-';
+            document.getElementById('readFilhos').innerText = (dados.temFilhos === 'Sim' ? 'Com Filhos' : 'Sem Filhos');
+            document.getElementById('readRenda').innerText = formatarMoeda(dados.rendaMensal);
+            
+            if(dados.observacoesGerais && dados.observacoesGerais.trim() !== "") {
+                document.getElementById('readObs').innerText = dados.observacoesGerais;
+            }
+
+            if(dados.listas) listasDados = dados.listas;
+            atualizarListasLeitura();
+
+            const form = document.getElementById('formDados');
+            Array.from(form.elements).forEach(field => {
+                if (field.name && dados[field.name]) {
+                    field.value = dados[field.name];
+                }
+            });
+
+            renderizarTodasListasEdicao();
+            construirMenuLateral(clientId);
+
+            isDirty = false;
+            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+        }
+
+        function atualizarListasLeitura() {
+            gerarHtmlListaLeitura('objetivos', 'viewListObjetivos');
+            gerarHtmlListaLeitura('gastosFixos', 'viewListFixos');
+            gerarHtmlListaLeitura('gastosVariaveis', 'viewListVariaveis');
+            gerarHtmlListaLeitura('investimentos', 'viewListInvestimentos');
+            gerarHtmlListaLeitura('dividas', 'viewListDividas');
+        }
+
+        function gerarHtmlListaLeitura(tipo, elementId) {
+            const container = document.getElementById(elementId);
+            const lista = listasDados[tipo] || [];
+            
+            if(lista.length === 0) {
+                container.innerHTML = '<span class="text-muted small fst-italic">Vazio</span>';
+                return;
+            }
+            let html = '';
+            lista.forEach(item => {
+                const nome = item.col1 || 'Item';
+                const valor = formatarMoeda(item.valor || 0);
+                html += `<div class="list-read-item"><span>${nome}</span><strong>${valor}</strong></div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function toggleEdicao() {
+            const section = document.getElementById('sectionEditor');
+            if(section.classList.contains('d-none')) {
+                section.classList.remove('d-none');
+                section.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                section.classList.add('d-none');
+            }
+        }
+
+        // --- FUNÇÃO SEM LIMITES (PRO) ---
+        function addNaLista(tipo) {
+            let item = {};
+            if(tipo === 'objetivos') {
+                item = { col1: document.getElementById('objTitulo').value, valor: document.getElementById('objValor').value, col3: document.getElementById('objPrazo').value };
+                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Objetivo e Valor', 'aviso'); return; }
+                document.getElementById('objTitulo').value = ''; document.getElementById('objValor').value = ''; document.getElementById('objPrazo').value = '';
+            } 
+            else if(tipo === 'dividas') {
+                item = { col1: document.getElementById('divTitulo').value, valor: document.getElementById('divValor').value };
+                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Descrição e Valor', 'aviso'); return; }
+                document.getElementById('divTitulo').value = ''; document.getElementById('divValor').value = '';
+            } 
+            else if(tipo === 'investimentos') {
+                item = { col1: document.getElementById('invOnde').value, valor: document.getElementById('invValor').value };
+                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Onde e Valor', 'aviso'); return; }
+                document.getElementById('invOnde').value = ''; document.getElementById('invValor').value = '';
+            } 
+            else if(tipo.startsWith('gastos')) {
+                const sufixo = tipo === 'gastosFixos' ? 'Fixo' : 'Var';
+                item = { col1: document.getElementById(`gasto${sufixo}Nome`).value, valor: document.getElementById(`gasto${sufixo}Valor`).value };
+                if(!item.col1 || !item.valor) return; 
+                document.getElementById(`gasto${sufixo}Nome`).value = ''; document.getElementById(`gasto${sufixo}Valor`).value = '';
+            }
+
+            if(!listasDados[tipo]) listasDados[tipo] = [];
+            listasDados[tipo].push(item);
+            marcarComoSujo();
+            renderizarListaEdicao(tipo);
+        }
+
+        function removerItem(tipo, index) {
+            listasDados[tipo].splice(index, 1);
+            marcarComoSujo();
+            renderizarListaEdicao(tipo);
+        }
+
+        function renderizarTodasListasEdicao() {
+            ['objetivos', 'dividas', 'investimentos', 'gastosFixos', 'gastosVariaveis'].forEach(tipo => renderizarListaEdicao(tipo));
+        }
+
+        function renderizarListaEdicao(tipo) {
+            const tbody = document.getElementById(`lista-${tipo}`);
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            (listasDados[tipo] || []).forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.col1}</td>
+                    <td class="text-end">${formatarMoeda(item.valor)}</td>
+                    <td style="width:30px"><i class="bi bi-x text-danger" style="cursor:pointer" onclick="removerItem('${tipo}', ${index})"></i></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function marcarComoSujo() {
+            isDirty = true;
+            document.getElementById('alertaNaoSalvo').classList.remove('hidden');
+        }
+
+        function salvarAlteracoes(silencioso = false) {
+            const form = document.getElementById('formDados');
+            const db = getDB();
+            const index = db.findIndex(c => c.id === clientId);
+            if (index === -1) return;
+
+            const novosDados = {};
+            Array.from(form.elements).forEach(field => {
+                if(field.name) novosDados[field.name] = field.value;
+            });
+            novosDados.listas = listasDados;
+
+            db[index].dadosPessoais = novosDados;
+            saveDB(db);
+
+            isDirty = false;
+            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+            
+            if (!silencioso) {
+                exibirMensagem("Perfil do cliente atualizado com sucesso!", "sucesso", () => {
+                    location.reload(); 
+                });
+            }
+        }
+
+        function voltarIndex() { navegarPara('clientes.html'); }
+
+        carregarDados();
+    </script>
+</body>
+</html>

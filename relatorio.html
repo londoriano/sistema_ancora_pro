@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Financeiro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        /* Estilos Gerais de Impressão */
+        body { 
+            background: #fff; 
+            color: #222; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.5;
+        }
+        
+        .no-print { display: block; }
+        
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #000;
+            border-bottom: 2px solid #000;
+            margin-bottom: 20px;
+            padding-bottom: 5px;
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+
+        .table-clean { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .table-clean th { text-align: left; border-bottom: 2px solid #aaa; padding: 8px; font-size: 0.9rem; text-transform: uppercase; }
+        .table-clean td { border-bottom: 1px solid #eee; padding: 8px; font-size: 0.95rem; }
+        
+        .card-print { border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin-bottom: 15px; break-inside: avoid; }
+        
+        .label { font-size: 0.75rem; text-transform: uppercase; color: #666; font-weight: bold; letter-spacing: 1px; }
+        .value { font-size: 1.1rem; font-weight: 500; }
+
+        .footer-print {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            padding: 10px;
+            border-top: 1px solid #eee;
+            background: #fff;
+        }
+
+        @media print {
+            @page { margin: 1.5cm; size: A4; }
+            body { margin: 0; padding: 0; }
+            .no-print { display: none !important; }
+            .footer-print { display: block; }
+            .page-break { page-break-before: always; }
+            
+            .bg-dark, .bg-primary, .bg-success, .bg-danger { 
+                background-color: transparent !important; 
+                color: #000 !important; 
+                border: 1px solid #000 !important;
+            }
+            .text-white { color: #000 !important; }
+            .badge { border: 1px solid #000; color: #000; background: none; }
+            a { text-decoration: none; color: #000; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container mt-3 mb-4 no-print d-flex justify-content-between">
+        <button class="btn btn-secondary" onclick="window.close()">Fechar</button>
+        <div class="alert alert-info py-1 px-3 m-0 small">
+            <i class="bi bi-info-circle"></i> Configuração sugerida: Papel A4, Margens Padrão, Sem Cabeçalho/Rodapé.
+        </div>
+        <button class="btn btn-dark fw-bold" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+    </div>
+
+    <div class="container">
+
+        <div style="margin-bottom: 40px;">
+            <div class="d-flex justify-content-between align-items-end border-bottom pb-3 mb-4">
+                <div>
+                    <h1 class="m-0 fw-bold" id="repNome" style="font-size: 2.5rem;">-</h1>
+                    <span class="text-muted">Diagnóstico realizado em: <span id="repDataDiag">-</span></span>
+                </div>
+                <div class="text-end">
+                    <div class="label">Consultoria</div>
+                    <div class="value">Âncora Consultoria Financeira</div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-4 mb-3"><div class="label">Email</div><div id="repEmail">-</div></div>
+                <div class="col-4 mb-3"><div class="label">Telefone</div><div id="repTel">-</div></div>
+                <div class="col-4 mb-3"><div class="label">Profissão</div><div id="repProf">-</div></div>
+                <div class="col-12">
+                    <div class="card-print bg-light">
+                        <div class="label mb-1">Perfil & Observações</div>
+                        <div id="repObs" class="fst-italic">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">Raio-X Patrimonial</div>
+        <div class="row mb-4 text-center">
+            <div class="col-4">
+                <div class="card-print">
+                    <div class="label">Total Investido</div>
+                    <div class="value" id="repInvestimentos">R$ 0,00</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card-print">
+                    <div class="label">Total Dívidas</div>
+                    <div class="value" id="repDividas">R$ 0,00</div>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card-print" style="border: 2px solid #000;">
+                    <div class="label">Patrimônio Líquido</div>
+                    <div class="value fw-bold" id="repPatrimonio">R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Histórico de Caixa</div>
+        <table class="table-clean">
+            <thead>
+                <tr>
+                    <th>Período</th>
+                    <th class="text-end">Receitas (+)</th>
+                    <th class="text-end">Despesas (-)</th>
+                    <th class="text-end">Resultado</th>
+                </tr>
+            </thead>
+            <tbody id="tabFluxo"></tbody>
+        </table>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Detalhamento de Dívidas</div>
+        <div class="row" id="containerDividas"></div>
+        
+        <div class="row mt-3 text-end">
+            <div class="col-12">
+                <div style="font-size: 1.1rem;"><strong>Total Dívida Real: <span id="totalDividas">-</span></strong></div>
+                <div class="text-success small fw-bold mt-1">Total para Quitação (Acordos): <span id="totalOfertas">-</span></div>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Reserva de Emergência</div>
+        <div class="row mb-4">
+            <div class="col-6">
+                <div class="card-print">
+                    <div class="label">Custo de Vida Mensal</div>
+                    <div class="value" id="resCusto">-</div>
+                    <div class="label mt-3">Meta de Segurança (6 meses)</div>
+                    <div class="value fw-bold" id="resMeta">-</div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="card-print">
+                    <div class="label">Valor Atual Guardado</div>
+                    <div class="value" id="resAtual">-</div>
+                    <div class="label mt-3">Previsão de Conclusão</div>
+                    <div class="value fw-bold" id="resTempo">-</div>
+                    <small class="text-muted" id="resDetalhesTempo">-</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Blindagem (Seguros)</div>
+        <table class="table-clean">
+            <thead>
+                <tr>
+                    <th>Cobertura</th>
+                    <th>Seguradora / Detalhes</th>
+                    <th class="text-end">Valor Cobertura</th>
+                </tr>
+            </thead>
+            <tbody id="tabProtecao"></tbody>
+        </table>
+        <div class="card-print bg-light text-muted fst-italic py-2" id="repProtObs"></div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Projeto Aposentadoria</div>
+        <div class="row">
+            <div class="col-6">
+                <table class="table-clean">
+                    <tr><td>Valor Inicial</td><td class="text-end fw-bold" id="apoInicial">-</td></tr>
+                    <tr><td>Aporte Mensal</td><td class="text-end fw-bold" id="apoMensal">-</td></tr>
+                    <tr><td>Aporte Esporádico (Anual)</td><td class="text-end fw-bold" id="apoExtra">-</td></tr>
+                    <tr><td>Prazo Acumulação</td><td class="text-end fw-bold" id="apoPrazo">-</td></tr>
+                    <tr><td>Rentabilidade Fase 1</td><td class="text-end fw-bold" id="apoRent">-</td></tr>
+                    <tr><td>IR no Resgate Total</td><td class="text-end fw-bold text-danger" id="apoIR">-</td></tr>
+                </table>
+            </div>
+            <div class="col-6">
+                <div class="card-print text-center">
+                    <div class="label">Patrimônio Bruto Acumulado</div>
+                    <h3 class="fw-bold m-0" id="apoTotal">-</h3>
+                    <div class="small text-muted mt-1">Líquido Estimado: <strong id="apoLiquido">-</strong></div>
+                </div>
+                <div class="card-print text-center" style="border: 2px solid #000;">
+                    <div class="label">Renda Mensal Vitalícia</div>
+                    <h3 class="fw-bold m-0 text-success" id="apoRenda">-</h3>
+                    <small class="text-muted" style="font-size:0.7rem">Calculada sobre o montante pós-IR</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Carteira de Investimentos</div>
+        <div class="row mb-3">
+            <div class="col-4"><div class="card-print text-center"><div class="label">Renda Fixa</div><div class="value" id="totalFixa">-</div></div></div>
+            <div class="col-4"><div class="card-print text-center"><div class="label">Renda Variável</div><div class="value" id="totalVar">-</div></div></div>
+            <div class="col-4"><div class="card-print text-center"><div class="label">Total Geral</div><div class="value fw-bold" id="totalInvest">-</div></div></div>
+        </div>
+        <table class="table-clean">
+            <thead>
+                <tr>
+                    <th>Ativo</th>
+                    <th>Categoria</th>
+                    <th>Objetivo</th>
+                    <th class="text-end">Valor</th>
+                </tr>
+            </thead>
+            <tbody id="tabInvest"></tbody>
+        </table>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Objetivos & Sonhos</div>
+        <div class="row" id="containerObjetivos"></div>
+
+        <div class="page-break"></div>
+
+        <div class="section-title">Planejamento & Próximos Passos</div>
+        
+        <div class="row mb-4">
+            <div class="col-4">
+                <div class="card-print text-center">
+                    <div class="label">Renda Base</div>
+                    <div class="value" id="repRenda">-</div>
+                </div>
+            </div>
+            <div class="col-8">
+                <div class="label mb-1">Distribuição Sugerida</div>
+                <div class="progress" style="height: 25px; border: 1px solid #000;" id="barraProgresso"></div>
+                <div class="d-flex justify-content-between small mt-1">
+                    <span id="legEssencial">-</span>
+                    <span id="legEstilo">-</span>
+                    <span id="legInvest">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-print">
+            <div class="label mb-2" style="border-bottom: 1px solid #eee; padding-bottom: 5px;">Parecer Estratégico</div>
+            <p id="repPlanObs" style="white-space: pre-wrap;">-</p>
+        </div>
+
+        <div class="mt-4">
+            <div class="label mb-2" style="border-bottom: 2px solid #000; padding-bottom: 5px;">TAREFAS A EXECUTAR</div>
+            <ul id="listaTarefas" style="list-style-type: square; padding-left: 20px;">
+                <li>Nenhuma tarefa.</li>
+            </ul>
+        </div>
+
+    </div>
+
+    <div class="footer-print">
+        Âncora Consultoria Financeira
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('id');
+
+        window.onload = function() {
+            if(!clientId) return alert("Erro de ID");
+            const db = getDB();
+            const c = db.find(x => x.id === clientId);
+            if(!c) return alert("Cliente não encontrado");
+
+            // 1. CAPA
+            document.getElementById('repNome').innerText = c.nome;
+            document.getElementById('repDataDiag').innerText = c.dataDiagnostico ? c.dataDiagnostico.split('-').reverse().join('/') : '-';
+            document.getElementById('repEmail').innerText = c.email || '-';
+            document.getElementById('repTel').innerText = c.telefone || '-';
+            const dp = c.dadosPessoais || {};
+            document.getElementById('repProf').innerText = dp.profissao || '-';
+            document.getElementById('repObs').innerText = dp.observacoesGerais || "Sem observações.";
+
+            // 2. BALANÇO (Calculo inicial simples)
+            const divDef = c.endividamento || [];
+            const invDef = c.investimentos || [];
+            
+            // Calculo Detalhado de Dívidas (Atualizado)
+            let totalDiv = 0;
+            let totalOf = 0;
+
+            // Filtra e soma
+            divDef.forEach(d => {
+                if(d.status !== 'paga') {
+                    totalDiv += parseFloat(d.valorAtual || 0);
+                    totalOf += parseFloat(d.oferta || 0);
+                }
+            });
+
+            let totalInv = invDef.reduce((acc, i) => acc + (parseFloat(i.valor)||0), 0);
+            
+            document.getElementById('repDividas').innerText = formatarMoeda(totalDiv);
+            document.getElementById('repInvestimentos').innerText = formatarMoeda(totalInv);
+            document.getElementById('repPatrimonio').innerText = formatarMoeda(totalInv - totalDiv);
+
+            // 3. FLUXO
+            const fluxo = c.fluxoCaixa || {};
+            const tabFluxo = document.getElementById('tabFluxo');
+            const meses = Object.keys(fluxo).sort().reverse();
+            if(meses.length === 0) tabFluxo.innerHTML = '<tr><td colspan="4" class="text-center fst-italic">Vazio</td></tr>';
+            else {
+                meses.forEach(mKey => {
+                    const m = fluxo[mKey];
+                    const rec = m.receitas.reduce((a,b)=>a+parseFloat(b.valor),0);
+                    const des = m.fixos.reduce((a,b)=>a+parseFloat(b.valor),0) + m.variaveis.reduce((a,b)=>a+parseFloat(b.valor),0);
+                    tabFluxo.innerHTML += `<tr><td>${mKey}</td><td class="text-end">${formatarMoeda(rec)}</td><td class="text-end">${formatarMoeda(des)}</td><td class="text-end fw-bold">${formatarMoeda(rec-des)}</td></tr>`;
+                });
+            }
+
+            // 4. ENDIVIDAMENTO (Renderização Detalhada)
+            const divCont = document.getElementById('containerDividas');
+            if(divDef.length === 0) {
+                divCont.innerHTML = '<div class="col-12 fst-italic text-muted">Sem dívidas.</div>';
+                document.getElementById('totalDividas').innerText = formatarMoeda(0);
+                document.getElementById('totalOfertas').innerText = formatarMoeda(0);
+            } else {
+                // Ordena por Prioridade (1 a 7, nulos vão pro fim)
+                divDef.sort((a,b) => (parseInt(a.prioridade)||99) - (parseInt(b.prioridade)||99));
+
+                divDef.forEach(d => {
+                    if(d.status !== 'paga') {
+                        divCont.innerHTML += `
+                            <div class="col-6">
+                                <div class="card-print">
+                                    <div class="d-flex justify-content-between">
+                                        <div class="fw-bold">${d.descricao}</div>
+                                        <span class="badge" style="border:1px solid #333; color:#333; font-size:0.75rem;">P${d.prioridade || 7}</span>
+                                    </div>
+                                    <div class="small text-muted mb-2 fst-italic">${d.tipo || 'Não classificado'}</div>
+                                    
+                                    <div class="d-flex justify-content-between small mt-2 pt-2 border-top">
+                                        <span>Atual: <strong>${formatarMoeda(d.valorAtual)}</strong></span>
+                                        <span>Juros: ${d.juros}% a.m.</span>
+                                    </div>
+                                    
+                                    ${parseFloat(d.oferta) > 0 ? `
+                                        <div class="mt-2 text-end small fw-bold text-success" style="border-top:1px dashed #ccc; padding-top:4px;">
+                                            Acordo: ${formatarMoeda(d.oferta)}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>`;
+                    }
+                });
+                
+                document.getElementById('totalDividas').innerText = formatarMoeda(totalDiv);
+                document.getElementById('totalOfertas').innerText = formatarMoeda(totalOf);
+            }
+
+            // 5. RESERVA
+            const res = c.reservaEmergencia || {};
+            const custo = parseFloat(res.custoVida || 0);
+            const atual = parseFloat(res.valorAtual || 0);
+            const aporte = parseFloat(res.aporteMensal || 0);
+            const rent = parseFloat(res.rentAnual || 10);
+            const imp = parseFloat(res.imposto || 17.5);
+
+            document.getElementById('resCusto').innerText = formatarMoeda(custo);
+            document.getElementById('resMeta').innerText = formatarMoeda(custo*6);
+            document.getElementById('resAtual').innerText = formatarMoeda(atual);
+
+            if(custo > 0) {
+                const meta = custo * 6;
+                if(atual >= meta) {
+                    document.getElementById('resTempo').innerText = "Concluída";
+                    document.getElementById('resDetalhesTempo').innerText = "";
+                } else if (aporte <= 0) {
+                    document.getElementById('resTempo').innerText = "Indefinido";
+                    document.getElementById('resDetalhesTempo').innerText = "Aporte zerado";
+                } else {
+                    const i = ((rent/100)*(1-(imp/100)))/12;
+                    let m = (i===0) ? (meta-atual)/aporte : Math.log((meta*i + aporte)/(atual*i + aporte))/Math.log(1+i);
+                    document.getElementById('resTempo').innerText = Math.ceil(m) + " meses";
+                    document.getElementById('resDetalhesTempo').innerText = `Aportando ${formatarMoeda(aporte)}/mês`;
+                }
+            }
+
+            // 6. PROTEÇÃO
+            const prot = c.protecao || { itens: [], observacoes: "" };
+            const tabProt = document.getElementById('tabProtecao');
+            if(prot.itens.length===0) tabProt.innerHTML = '<tr><td colspan="3" class="text-center fst-italic">Vazio</td></tr>';
+            else {
+                prot.itens.forEach(p => tabProt.innerHTML += `<tr><td>${p.tipo}</td><td>${p.descricao}</td><td class="text-end">${formatarMoeda(p.valor)}</td></tr>`);
+            }
+            document.getElementById('repProtObs').innerText = prot.observacoes || "Sem observações.";
+
+            // 7. APOSENTADORIA
+            const apo = c.aposentadoria || {};
+            const apoIni = parseFloat(apo.inicial||0);
+            const apoPra = parseFloat(apo.prazo||0);
+            const apoMen = parseFloat(apo.mensal||0);
+            const apoExt = parseFloat(apo.extra||0);
+            const apoRen = parseFloat(apo.rentab||0);
+            const apoFim = parseFloat(apo.rentabFim||0.4); 
+            const apoIR = parseFloat(apo.ir||0); 
+
+            document.getElementById('apoInicial').innerText = formatarMoeda(apoIni);
+            document.getElementById('apoMensal').innerText = formatarMoeda(apoMen);
+            document.getElementById('apoExtra').innerText = formatarMoeda(apoExt);
+            document.getElementById('apoPrazo').innerText = apoPra + " anos";
+            document.getElementById('apoRent').innerText = apoRen + "% a.a.";
+            document.getElementById('apoIR').innerText = apoIR + "%";
+            
+            if(apoPra > 0) {
+                let saldo = apoIni;
+                const tm = (Math.pow(1+(apoRen/100), 1/12))-1;
+                for(let k=1; k<=apoPra*12; k++) {
+                    saldo = saldo*(1+tm) + apoMen;
+                    if(k%12===0) saldo+=apoExt;
+                }
+                const imposto = saldo * (apoIR / 100);
+                const saldoLiquido = saldo - imposto;
+                const renda = saldoLiquido * (apoFim/100);
+
+                document.getElementById('apoTotal').innerText = formatarMoeda(saldo);
+                document.getElementById('apoLiquido').innerText = formatarMoeda(saldoLiquido);
+                document.getElementById('apoRenda').innerText = formatarMoeda(renda);
+            }
+
+            // 8. INVESTIMENTOS
+            const tabInv = document.getElementById('tabInvest');
+            let fix=0, vari=0;
+            if(invDef.length===0) tabInv.innerHTML = '<tr><td colspan="4" class="text-center">Vazio</td></tr>';
+            else {
+                invDef.forEach(i => {
+                    const v = parseFloat(i.valor||0);
+                    if(i.categoria==='Renda Fixa') fix+=v; else vari+=v;
+                    tabInv.innerHTML += `<tr><td>${i.nome}</td><td>${i.categoria}</td><td>${i.objetivo}</td><td class="text-end">${formatarMoeda(v)}</td></tr>`;
+                });
+            }
+            document.getElementById('totalFixa').innerText = formatarMoeda(fix);
+            document.getElementById('totalVar').innerText = formatarMoeda(vari);
+            document.getElementById('totalInvest').innerText = formatarMoeda(fix+vari);
+
+            // 9. OBJETIVOS
+            const objs = c.objetivosPlanejados || [];
+            const objCont = document.getElementById('containerObjetivos');
+            if(objs.length===0) objCont.innerHTML = '<div class="col-12 text-muted fst-italic">Vazio</div>';
+            else {
+                objs.forEach(o => {
+                    const custo = parseFloat(o.valorTotal || 0);
+                    const aporte = parseFloat(o.aporte || 0);
+                    let estimativaReal = "Indefinido";
+                    if(aporte > 0) {
+                        const meses = Math.ceil(custo / aporte);
+                        estimativaReal = `${meses} meses (~${(meses/12).toFixed(1)} anos)`;
+                    }
+
+                    objCont.innerHTML += `
+                    <div class="col-4">
+                        <div class="card-print">
+                            <div class="fw-bold text-primary">${o.nome}</div>
+                            <div class="small mt-2">
+                                <div>Custo: <strong>${formatarMoeda(o.valorTotal)}</strong></div>
+                                <div>Aporte: ${formatarMoeda(o.aporte)}</div>
+                                <div>Prazo Desejado: ${o.prazo}</div>
+                                <div class="mt-1 pt-1 border-top text-dark fw-bold">Realidade: ${estimativaReal}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            // 10. PLANEJAMENTO FINAL
+            const plan = c.planejamento || {};
+            const meta = plan.meta || { essencialPct: 50, estiloPct: 30, investPct: 20 };
+            
+            // Tenta pegar renda atualizada
+            const rendaAtual = parseFloat(c.dadosPessoais?.rendaMensal || 0);
+            
+            document.getElementById('repRenda').innerText = formatarMoeda(rendaAtual);
+            document.getElementById('barraProgresso').innerHTML = `
+                <div style="width:${meta.essencialPct}%; background:#ccc;"></div>
+                <div style="width:${meta.estiloPct}%; background:#999;"></div>
+                <div style="width:${meta.investPct}%; background:#333;"></div>
+            `;
+            if(rendaAtual > 0) {
+                document.getElementById('legEssencial').innerText = `Essenciais: ${formatarMoeda(rendaAtual*(meta.essencialPct/100))}`;
+                document.getElementById('legEstilo').innerText = `Estilo: ${formatarMoeda(rendaAtual*(meta.estiloPct/100))}`;
+                document.getElementById('legInvest').innerText = `Invest: ${formatarMoeda(rendaAtual*(meta.investPct/100))}`;
+            } else {
+                document.getElementById('legEssencial').innerText = "Essenciais: R$ 0,00";
+                document.getElementById('legEstilo').innerText = "Estilo: R$ 0,00";
+                document.getElementById('legInvest').innerText = "Invest: R$ 0,00";
+            }
+            
+            document.getElementById('repPlanObs').innerText = plan.observacoes || "Sem notas.";
+            const ulT = document.getElementById('listaTarefas');
+            const pend = (plan.tarefas||[]).filter(t=>!t.feita);
+            if(pend.length>0) {
+                ulT.innerHTML = '';
+                pend.forEach(t => ulT.innerHTML += `<li>${t.descricao}</li>`);
+            } else {
+                ulT.innerHTML = '<li>Nenhuma tarefa pendente.</li>';
+            }
+        };
+
+        function formatarMoeda(valor) {
+            return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        function getDB() {
+            const data = localStorage.getItem("consultoria_db");
+            return data ? JSON.parse(data) : [];
+        }
+    </script>
+</body>
+</html>

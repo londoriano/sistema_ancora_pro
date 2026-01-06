@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestão de Endividamento</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .divida-paga { text-decoration: line-through; opacity: 0.6; }
+        .card-divida { transition: transform 0.2s; }
+        .card-divida:hover { transform: translateY(-3px); }
+        .bg-paga { background-color: #f8f9fa; border-left: 5px solid #198754; }
+        .bg-aberta { border-left: 5px solid #dc3545; }
+        
+        /* Cores das Prioridades */
+        .badge-prio-1 { background-color: #dc3545; color: white; } /* Crítica (Vermelho) */
+        .badge-prio-2 { background-color: #fd7e14; color: white; } /* Laranja */
+        .badge-prio-3 { background-color: #ffc107; color: black; } /* Amarelo */
+        .badge-prio-4 { background-color: #0dcaf0; color: black; } /* Azul Claro */
+        .badge-prio-5 { background-color: #0d6efd; color: white; } /* Azul */
+        .badge-prio-6 { background-color: #6c757d; color: white; } /* Cinza */
+        .badge-prio-7 { background-color: #adb5bd; color: white; } /* Cinza Claro */
+    </style>
+</head>
+<body>
+
+    <div id="alertaNaoSalvo" class="alert alert-warning text-center m-0 hidden">
+        ⚠️ <strong>ALTERAÇÕES PENDENTES!</strong> Salve antes de sair.
+    </div>
+
+    <nav class="navbar navbar-custom px-4 sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler bg-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand text-white" href="#" id="headerNomeCliente">Dívidas</a>
+            <div class="d-flex gap-2 ms-auto">
+                <button class="btn btn-success btn-sm fw-bold" onclick="salvarAlteracoes()"><i class="bi bi-save"></i> SALVAR</button>
+                <button class="btn btn-outline-light btn-sm" onclick="voltarIndex()"><i class="bi bi-arrow-return-left"></i> Voltar</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="menuLateral">
+        <div class="offcanvas-header bg-dark text-white">
+            <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral"></div>
+    </div>
+
+    <div class="container mt-4 mb-5 pb-5">
+        
+        <div class="row mb-4 align-items-end g-3">
+            <div class="col-md-5">
+                <h4 class="section-title my-0">Mapa de Endividamento</h4>
+                <small class="text-muted">Gestão estratégica de passivos.</small>
+            </div>
+            <div class="col-md-3">
+                <label class="small fw-bold text-muted">Ordenar por:</label>
+                <select id="filtroOrdenacao" class="form-select form-select-sm" onchange="renderizarDividas()">
+                    <option value="padrao">Cadastro (Padrão)</option>
+                    <option value="prioridade">Prioridade (1-7)</option>
+                    <option value="oferta">Menores Ofertas (Acordos)</option>
+                    <option value="antiga">Mais Antigas</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalDivida" onclick="prepararNovaDivida()">
+                    <i class="bi bi-plus-circle"></i> Nova Dívida
+                </button>
+            </div>
+        </div>
+
+        <div id="listaDividas" class="row g-3"></div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card bg-dark text-white p-3 shadow mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="m-0 text-white-50 fs-6">TOTAL EM ABERTO</h5>
+                            <small class="text-muted" style="font-size:0.7rem">Valor de face atualizado</small>
+                        </div>
+                        <h3 class="m-0 text-warning" id="totalDividasGlobal">R$ 0,00</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-success text-white p-3 shadow mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="m-0 text-white-50 fs-6">TOTAL DE PROPOSTAS</h5>
+                            <small class="text-white-50" style="font-size:0.7rem">Custo para quitar hoje (Acordos)</small>
+                        </div>
+                        <h3 class="m-0 text-white" id="totalOfertasGlobal">R$ 0,00</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDivida" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitulo">Detalhes da Dívida</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editIndex" value="-1">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Descrição (Credor) *</label>
+                            <input type="text" id="divDesc" class="form-control" placeholder="Ex: Cartão Nubank">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo de Dívida</label>
+                            <select id="divTipo" class="form-select">
+                                <option value="Outros">Selecione...</option>
+                                <optgroup label="Crédito e Consumo">
+                                    <option value="Cartão de crédito">Cartão de crédito</option>
+                                    <option value="Cheque especial">Cheque especial</option>
+                                    <option value="Empréstimo pessoal">Empréstimo pessoal</option>
+                                    <option value="Crédito consignado">Crédito consignado</option>
+                                    <option value="Financiamento de celular/eletro">Financiamento de celular/eletro</option>
+                                </optgroup>
+                                <optgroup label="Veículos e Imóveis">
+                                    <option value="Financiamento de veículo">Financiamento de veículo</option>
+                                    <option value="Financiamento imobiliário">Financiamento imobiliário</option>
+                                    <option value="Condomínio/Aluguel">Condomínio/Aluguel</option>
+                                </optgroup>
+                                <optgroup label="Essenciais e Tributos">
+                                    <option value="Contas de Consumo (Luz/Água)">Contas de Consumo (Luz/Água)</option>
+                                    <option value="Impostos (IPTU/IPVA/IR)">Impostos (IPTU/IPVA/IR)</option>
+                                    <option value="Educação/Saúde">Educação/Saúde</option>
+                                </optgroup>
+                                <optgroup label="Outros">
+                                    <option value="Empréstimo Pessoal (Amigos)">Empréstimo Pessoal (Amigos)</option>
+                                    <option value="Renegociação">Renegociação</option>
+                                    <option value="Crediário">Crediário (Lojas)</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-4 mb-3">
+                            <label class="form-label text-muted small">Valor Original (R$)</label>
+                            <input type="number" id="divValorOriginal" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label fw-bold text-danger">Valor Atual (R$) *</label>
+                            <input type="number" id="divValorAtual" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">Juros (% a.m.)</label>
+                            <input type="number" id="divJuros" class="form-control" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="row align-items-end">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label d-flex justify-content-between">
+                                <span>Prioridade (1-7)</span>
+                                <a href="#" onclick="abrirTabelaReferencia()" class="text-decoration-none fw-bold" style="font-size:0.8rem"><i class="bi bi-info-circle-fill"></i> Tabela</a>
+                            </label>
+                            <input type="number" id="divPrioridade" class="form-control" min="1" max="7" placeholder="1 = Crítica">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" id="divData" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 p-3 bg-light rounded border border-success bg-opacity-10">
+                        <label class="form-label text-success fw-bold"><i class="bi bi-cash-stack"></i> Proposta de Quitação (Acordo)</label>
+                        <input type="number" id="divOferta" class="form-control border-success" placeholder="Valor negociado à vista">
+                        <div class="form-text small">Insira aqui o valor da oferta de acordo proposta pelo credor.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary px-4" onclick="salvarDividaMemoria()">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalTabelaPrioridade" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-table"></i> Tabela de Prioridades e Estratégia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered mb-0 small">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th>Tipo</th>
+                                    <th class="text-center">Prio. (Dia)</th>
+                                    <th class="text-center">Prio. (Atraso)</th>
+                                    <th>Justificativa / Risco</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Essencial</td><td>Energia, Água, Gás</td><td class="text-center fw-bold">1</td><td class="text-center fw-bold">1</td><td>Corte rápido e essencial à vida.</td></tr>
+                                <tr><td>Crédito</td><td>Cartão de Crédito / Cheque Esp.</td><td class="text-center fw-bold">1</td><td class="text-center fw-bold">1</td><td>Juros mais altos do mercado. Bola de neve.</td></tr>
+                                <tr><td>Veículos</td><td>Financiamento / Leasing</td><td class="text-center">3</td><td class="text-center fw-bold">1</td><td>Risco real de busca e apreensão.</td></tr>
+                                <tr><td>Imóveis</td><td>Financiamento / Condomínio</td><td class="text-center">3</td><td class="text-center fw-bold">1</td><td>Risco de perda do imóvel (leilão).</td></tr>
+                                <tr><td>Crédito</td><td>Empréstimo com Garantia</td><td class="text-center">3</td><td class="text-center fw-bold">2</td><td>Risco de perder o bem dado em garantia.</td></tr>
+                                <tr><td>Tributos</td><td>Impostos (IR, IPTU)</td><td class="text-center">4</td><td class="text-center">3</td><td>Execução fiscal e bloqueio de bens (prazo médio).</td></tr>
+                                <tr><td>Crédito</td><td>Empréstimo Pessoal</td><td class="text-center">4</td><td class="text-center">3</td><td>Negativação do nome (SPC/Serasa).</td></tr>
+                                <tr><td>Outros</td><td>Empréstimo Amigos/Família</td><td class="text-center">5</td><td class="text-center">3</td><td>Dano moral e conflito pessoal.</td></tr>
+                                <tr><td>Veículos</td><td>Multas e IPVA</td><td class="text-center">4</td><td class="text-center">3</td><td>Bloqueia licenciamento e gera blitz.</td></tr>
+                                <tr><td>Consumo</td><td>Boleto Loja / Crediário</td><td class="text-center">5</td><td class="text-center">4</td><td>Juros altos e negativação.</td></tr>
+                                <tr><td>Serviços</td><td>Internet / TV / Academia</td><td class="text-center">5</td><td class="text-center">5</td><td>Apenas corte do serviço.</td></tr>
+                                <tr><td>Educação</td><td>FIES / Crédito Estudantil</td><td class="text-center">6</td><td class="text-center">5</td><td>Juros baixos e prazos longos.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('id');
+        let listaDividas = [];
+        let isDirty = false;
+        const modalDiv = new bootstrap.Modal(document.getElementById('modalDivida'));
+        const modalTable = new bootstrap.Modal(document.getElementById('modalTabelaPrioridade'));
+
+        function init() {
+            if(!clientId) {
+                exibirMensagem("Erro: Nenhum cliente selecionado.", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
+            carregarDados();
+            construirMenuLateral(clientId);
+        }
+
+        function carregarDados() {
+            const db = getDB();
+            const client = db.find(c => c.id === clientId);
+            if (!client) {
+                exibirMensagem("Cliente não encontrado.", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
+
+            document.getElementById('headerNomeCliente').innerText = `Dívidas: ${client.nome}`;
+            listaDividas = client.endividamento || [];
+            renderizarDividas();
+            isDirty = false;
+            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+        }
+
+        function renderizarDividas() {
+            const container = document.getElementById('listaDividas');
+            const ordenacao = document.getElementById('filtroOrdenacao').value;
+            let totalAberto = 0;
+            let totalOfertas = 0;
+            
+            container.innerHTML = '';
+
+            if(listaDividas.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted py-5"><i>Nenhuma dívida cadastrada.</i></div>';
+                document.getElementById('totalDividasGlobal').innerText = formatarMoeda(0);
+                document.getElementById('totalOfertasGlobal').innerText = formatarMoeda(0);
+                return;
+            }
+
+            // Clona array para não bagunçar a ordem original
+            let listaDisplay = [...listaDividas];
+
+            // --- LÓGICA DE ORDENAÇÃO ---
+            if (ordenacao === 'prioridade') {
+                listaDisplay.sort((a, b) => (parseInt(a.prioridade) || 99) - (parseInt(b.prioridade) || 99));
+            } else if (ordenacao === 'oferta') {
+                // Ordena quem tem oferta (menor para maior), depois quem não tem
+                listaDisplay.sort((a, b) => {
+                    const ofA = parseFloat(a.oferta) || 999999999;
+                    const ofB = parseFloat(b.oferta) || 999999999;
+                    return ofA - ofB;
+                });
+            } else if (ordenacao === 'antiga') {
+                listaDisplay.sort((a, b) => new Date(a.data || '9999-12-31') - new Date(b.data || '9999-12-31'));
+            }
+
+            listaDisplay.forEach((d) => {
+                const indexOriginal = listaDividas.indexOf(d); 
+                const isPaga = d.status === 'paga';
+                
+                if (!isPaga) {
+                    totalAberto += parseFloat(d.valorAtual || 0);
+                    totalOfertas += parseFloat(d.oferta || 0);
+                }
+
+                // Badge Prioridade
+                const prio = d.prioridade || 7;
+                const badgePrio = `<span class="badge badge-prio-${prio} ms-2" title="Prioridade ${prio}">P${prio}</span>`;
+
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4';
+                card.innerHTML = `
+                    <div class="card shadow-sm h-100 card-divida ${isPaga ? 'bg-paga' : 'bg-aberta'}">
+                        <div class="card-body ${isPaga ? 'divida-paga' : ''}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h5 class="fw-bold mb-0 text-dark">${d.descricao}</h5>
+                                    <small class="text-muted" style="font-size:0.75rem">${d.tipo || 'Outros'}</small>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    ${badgePrio}
+                                    <div class="dropdown ms-2">
+                                        <button class="btn btn-sm btn-light border" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="#" onclick="alternarStatus(${indexOriginal})">${isPaga ? 'Reabrir Dívida' : 'Marcar como Paga'}</a></li>
+                                            <li><a class="dropdown-item" href="#" onclick="editarDivida(${indexOriginal})">Editar</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="excluirDivida(${indexOriginal})">Excluir</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between text-muted small mb-3">
+                                <span><i class="bi bi-calendar"></i> ${d.data ? d.data.split('-').reverse().join('/') : '-'}</span>
+                                <span><i class="bi bi-graph-up-arrow"></i> ${d.juros || 0}% a.m.</span>
+                            </div>
+
+                            <div class="bg-white p-2 rounded border mb-2">
+                                <div class="d-flex justify-content-between small">
+                                    <span>Original:</span>
+                                    <span>${formatarMoeda(d.valorOriginal)}</span>
+                                </div>
+                                <div class="d-flex justify-content-between fw-bold text-dark fs-5">
+                                    <span>Atual:</span>
+                                    <span class="${isPaga ? 'text-success' : 'text-danger'}">${formatarMoeda(d.valorAtual)}</span>
+                                </div>
+                            </div>
+
+                            ${d.oferta && parseFloat(d.oferta) > 0 ? `
+                                <div class="alert alert-success py-1 px-2 mb-0 small d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-check-circle-fill"></i> Proposta:</span>
+                                    <strong>${formatarMoeda(d.oferta)}</strong>
+                                </div>
+                            ` : '<div class="text-muted small text-center fst-italic mt-2">Sem proposta de acordo</div>'}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('totalDividasGlobal').innerText = formatarMoeda(totalAberto);
+            document.getElementById('totalOfertasGlobal').innerText = formatarMoeda(totalOfertas);
+        }
+
+        function abrirTabelaReferencia() {
+            modalTable.show();
+        }
+
+        function prepararNovaDivida() {
+            document.getElementById('editIndex').value = "-1"; 
+            document.getElementById('divDesc').value = "";
+            document.getElementById('divTipo').value = "Outros";
+            document.getElementById('divValorOriginal').value = "";
+            document.getElementById('divValorAtual').value = "";
+            document.getElementById('divPrioridade').value = "7";
+            document.getElementById('divData').value = "";
+            document.getElementById('divJuros').value = "";
+            document.getElementById('divOferta').value = "";
+            document.getElementById('modalTitulo').innerText = "Nova Dívida";
+        }
+
+        function salvarDividaMemoria() {
+            const indexVal = document.getElementById('editIndex').value;
+            const index = indexVal === "" ? -1 : parseInt(indexVal);
+            
+            const desc = document.getElementById('divDesc').value;
+            const valorAtual = document.getElementById('divValorAtual').value;
+
+            if (!desc || !valorAtual) {
+                exibirMensagem("Preencha a Descrição e o Valor Atual.", "aviso");
+                return;
+            }
+
+            const dados = {
+                descricao: desc,
+                tipo: document.getElementById('divTipo').value,
+                valorOriginal: document.getElementById('divValorOriginal').value,
+                valorAtual: valorAtual,
+                prioridade: document.getElementById('divPrioridade').value || 7,
+                data: document.getElementById('divData').value,
+                juros: document.getElementById('divJuros').value,
+                oferta: document.getElementById('divOferta').value,
+                status: (index !== -1 && listaDividas[index]) ? listaDividas[index].status : 'aberta'
+            };
+
+            if (index === -1) {
+                listaDividas.push(dados);
+            } else {
+                listaDividas[index] = dados;
+            }
+
+            marcarComoSujo();
+            renderizarDividas();
+            modalDiv.hide();
+        }
+
+        function editarDivida(index) {
+            const d = listaDividas[index];
+            document.getElementById('editIndex').value = index;
+            document.getElementById('divDesc').value = d.descricao;
+            document.getElementById('divTipo').value = d.tipo || 'Outros';
+            document.getElementById('divValorOriginal').value = d.valorOriginal;
+            document.getElementById('divValorAtual').value = d.valorAtual;
+            document.getElementById('divPrioridade').value = d.prioridade || 7;
+            document.getElementById('divData').value = d.data;
+            document.getElementById('divJuros').value = d.juros;
+            document.getElementById('divOferta').value = d.oferta;
+            
+            document.getElementById('modalTitulo').innerText = "Editar Dívida";
+            modalDiv.show();
+        }
+
+        function alternarStatus(index) {
+            listaDividas[index].status = listaDividas[index].status === 'paga' ? 'aberta' : 'paga';
+            marcarComoSujo();
+            renderizarDividas();
+        }
+
+        function excluirDivida(index) {
+            exibirConfirmacao("Deseja realmente excluir esta dívida?", () => {
+                listaDividas.splice(index, 1);
+                marcarComoSujo();
+                renderizarDividas();
+            });
+        }
+
+        function marcarComoSujo() {
+            isDirty = true;
+            document.getElementById('alertaNaoSalvo').classList.remove('hidden');
+        }
+
+        function salvarAlteracoes(silencioso = false) {
+            const db = getDB();
+            const idx = db.findIndex(c => c.id === clientId);
+            
+            if (idx !== -1) {
+                db[idx].endividamento = listaDividas;
+                saveDB(db);
+                isDirty = false;
+                document.getElementById('alertaNaoSalvo').classList.add('hidden');
+                if (!silencioso) exibirMensagem("Dívidas salvas com sucesso!", "sucesso");
+            }
+        }
+
+        function voltarIndex() { navegarPara('clientes.html'); }
+
+        init();
+    </script>
+</body>
+</html>

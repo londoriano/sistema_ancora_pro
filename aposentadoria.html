@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Projeto Aposentadoria</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body>
+
+    <div id="alertaNaoSalvo" class="alert alert-warning text-center m-0 hidden">
+        ⚠️ <strong>ALTERAÇÕES PENDENTES!</strong> Salve antes de sair.
+    </div>
+
+    <nav class="navbar navbar-custom px-4 sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler bg-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand text-white" href="#" id="headerNomeCliente">Aposentadoria</a>
+            <div class="d-flex gap-2 ms-auto">
+                <button class="btn btn-success btn-sm fw-bold" onclick="salvarAlteracoes()"><i class="bi bi-save"></i> SALVAR</button>
+                <button class="btn btn-outline-light btn-sm" onclick="voltarIndex()"><i class="bi bi-arrow-return-left"></i> Voltar</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="menuLateral">
+        <div class="offcanvas-header bg-dark text-white">
+            <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral"></div>
+    </div>
+
+    <div class="container mt-4 mb-5 pb-5">
+        
+        <div class="row">
+            <div class="col-lg-5">
+                <h4 class="section-title mt-0">Simulador de Liberdade</h4>
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <form id="formAposentadoria" onchange="calcularAposentadoria()">
+                            
+                            <h6 class="fw-bold text-primary">Fase de Acumulação</h6>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small">Valor Inicial (R$)</label>
+                                    <input type="number" id="apoInicial" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small">Prazo (Anos)</label>
+                                    <input type="number" id="apoPrazo" class="form-control form-control-sm" value="20">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">Aporte Mensal (R$)</label>
+                                <input type="number" id="apoMensal" class="form-control form-control-sm" placeholder="Ex: 1000">
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small">Rentab. Anual (%)</label>
+                                    <input type="number" id="apoRentab" class="form-control form-control-sm" value="10" step="0.1">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted">Aporte Esporádico</label>
+                                    <input type="number" id="apoExtra" class="form-control form-control-sm" placeholder="Anual">
+                                    <div class="form-text" style="font-size:0.65rem">A cada 12 meses</div>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-danger border-top pt-3">Resgate e Tributação</h6>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Alíquota IR no Resgate Total (%)</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="apoIR" class="form-control" value="15" step="0.5">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text small">Aplicado sobre o Montante Final Acumulado</div>
+                            </div>
+
+                            <h6 class="fw-bold text-success border-top pt-2">Fase de Usufruto (Renda)</h6>
+                            <div class="mb-2">
+                                <label class="form-label small">Rentabilidade Mensal na Aposentadoria</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" id="apoRentabFim" class="form-control" value="0.5" step="0.01">
+                                    <span class="input-group-text">% a.m.</span>
+                                </div>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                <h4 class="section-title mt-0">Futuro Projetado</h4>
+                
+                <div class="card bg-dark text-white border-0 shadow mb-3">
+                    <div class="card-body p-4">
+                        <div class="row text-center">
+                            <div class="col-6 border-end border-secondary">
+                                <small class="text-white-50 text-uppercase fw-bold">Acumulado Bruto</small>
+                                <h3 class="fw-bold text-white mb-0" id="resTotalBruto">R$ 0,00</h3>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-white-50 text-uppercase fw-bold">Patrimônio Líquido</small>
+                                <h3 class="fw-bold text-warning mb-0" id="resTotalLiquido">R$ 0,00</h3>
+                                <small class="text-danger" style="font-size: 0.7rem;">(Após desconto do IR)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-success shadow-sm mb-3">
+                    <div class="card-body text-center">
+                        <h6 class="text-success fw-bold text-uppercase">Renda Mensal Vitalícia Estimada</h6>
+                        <p class="small text-muted mb-2">Gerada sobre o Patrimônio Líquido</p>
+                        <h2 class="fw-bold m-0 text-dark" id="resRenda">R$ 0,00</h2>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body small">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Total Aportado:</span>
+                                    <strong id="resEsforco">R$ 0,00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Juros Compostos:</span>
+                                    <strong class="text-primary" id="resJuros">R$ 0,00</strong>
+                                </div>
+                                <div class="d-flex justify-content-between border-top pt-2">
+                                    <span class="text-danger fw-bold">IR Estimado:</span>
+                                    <strong class="text-danger" id="resImposto">R$ 0,00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info m-0 h-100 small d-flex align-items-center">
+                            <div>
+                                <i class="bi bi-info-circle-fill me-1"></i> 
+                                <strong>Lógica:</strong> O sistema simula o resgate total ao fim do prazo, paga o IR, e aplica o valor líquido para gerar renda passiva.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('id');
+        let currentClient = null;
+        let isDirty = false;
+
+        function init() {
+            if(!clientId) return window.location.href = 'clientes.html';
+            carregarDados();
+            construirMenuLateral(clientId);
+        }
+
+        function carregarDados() {
+            const db = getDB();
+            currentClient = db.find(c => c.id === clientId);
+            if (!currentClient) return;
+
+            document.getElementById('headerNomeCliente').innerText = `Aposentadoria: ${currentClient.nome}`;
+            
+            const apo = currentClient.aposentadoria || {};
+            
+            document.getElementById('apoInicial').value = apo.inicial || '';
+            document.getElementById('apoPrazo').value = apo.prazo || '20';
+            document.getElementById('apoMensal').value = apo.mensal || '';
+            document.getElementById('apoRentab').value = apo.rentab || '10';
+            document.getElementById('apoExtra').value = apo.extra || '';
+            document.getElementById('apoRentabFim').value = apo.rentabFim || '0.5';
+            document.getElementById('apoIR').value = apo.ir || '15';
+
+            calcularAposentadoria();
+            
+            // Reseta flag para não mostrar alerta ao abrir
+            isDirty = false;
+            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+        }
+
+        function calcularAposentadoria() {
+            // Inputs
+            const inicial = parseFloat(document.getElementById('apoInicial').value) || 0;
+            const prazoAnos = parseFloat(document.getElementById('apoPrazo').value) || 0;
+            const aporteMensal = parseFloat(document.getElementById('apoMensal').value) || 0;
+            const rentAnual = parseFloat(document.getElementById('apoRentab').value) || 0;
+            const aporteExtra = parseFloat(document.getElementById('apoExtra').value) || 0;
+            
+            const rentFimMes = parseFloat(document.getElementById('apoRentabFim').value) || 0;
+            const aliquotaIR = parseFloat(document.getElementById('apoIR').value) || 0;
+
+            if(prazoAnos === 0) return;
+
+            // --- 1. FASE DE ACUMULAÇÃO ---
+            const meses = prazoAnos * 12;
+            const taxaMensal = (Math.pow(1 + (rentAnual/100), 1/12)) - 1;
+            
+            let saldo = inicial;
+            let totalAportado = inicial;
+
+            for(let i = 1; i <= meses; i++) {
+                saldo = saldo * (1 + taxaMensal); // Rende
+                saldo += aporteMensal;            // Aporta
+                totalAportado += aporteMensal;
+
+                // Aporte Extra Anual
+                if(i % 12 === 0) {
+                    saldo += aporteExtra;
+                    totalAportado += aporteExtra;
+                }
+            }
+
+            const lucroBruto = saldo - totalAportado;
+
+            // --- 2. TRIBUTAÇÃO (RESGATE TOTAL) ---
+            // Aplica IR sobre o MONTANTE TOTAL (Lógica PGBL/Conservadora solicitada)
+            // Se fosse VGBL Regressivo, seria apenas sobre o lucroBruto.
+            // Para segurança do planejamento, assumimos impacto no total (pior cenário ou PGBL).
+            const impostoTotal = saldo * (aliquotaIR / 100);
+            const saldoLiquido = saldo - impostoTotal;
+
+            // --- 3. FASE DE USUFRUTO (RENDA) ---
+            // A renda é gerada apenas pelo dinheiro que sobrou (Líquido)
+            const rendaMensal = saldoLiquido * (rentFimMes / 100);
+
+            // Renderizar
+            document.getElementById('resTotalBruto').innerText = formatarMoeda(saldo);
+            document.getElementById('resTotalLiquido').innerText = formatarMoeda(saldoLiquido);
+            
+            document.getElementById('resRenda').innerText = formatarMoeda(rendaMensal);
+            
+            document.getElementById('resEsforco').innerText = formatarMoeda(totalAportado);
+            document.getElementById('resJuros').innerText = formatarMoeda(lucroBruto);
+            document.getElementById('resImposto').innerText = "- " + formatarMoeda(impostoTotal);
+
+            marcarComoSujo();
+        }
+
+        function marcarComoSujo() {
+            isDirty = true;
+            document.getElementById('alertaNaoSalvo').classList.remove('hidden');
+        }
+
+        function salvarAlteracoes(silencioso = false) {
+            const db = getDB();
+            const idx = db.findIndex(c => c.id === clientId);
+            if (idx !== -1) {
+                db[idx].aposentadoria = {
+                    inicial: document.getElementById('apoInicial').value,
+                    prazo: document.getElementById('apoPrazo').value,
+                    mensal: document.getElementById('apoMensal').value,
+                    rentab: document.getElementById('apoRentab').value,
+                    extra: document.getElementById('apoExtra').value,
+                    rentabFim: document.getElementById('apoRentabFim').value,
+                    ir: document.getElementById('apoIR').value
+                };
+                saveDB(db);
+                isDirty = false;
+document.getElementById('alertaNaoSalvo').classList.add('hidden');
+
+if (!silencioso) {
+    exibirMensagem("Dados salvos com sucesso!", "sucesso");
+}
+            }
+        }
+
+        function voltarIndex() {
+            navegarPara('clientes.html');
+        }
+
+        init();
+    </script>
+</body>
+</html>

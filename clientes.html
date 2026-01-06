@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Carteira de Clientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .badge-lead { background-color: #6c757d; color: white; }
+        .badge-cliente { background-color: #198754; color: white; }
+        .cursor-pointer { cursor: pointer; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-custom px-4">
+        <div class="container-fluid">
+            <a class="navbar-brand text-white fw-bold" href="#">ÂNCORA CONSULTORIA FINANCEIRA</a>
+            <div class="d-flex gap-3">
+                <button class="btn btn-outline-light btn-sm" onclick="modalAdmin.show()"><i class="bi bi-gear-fill"></i> Admin</button>
+                <button class="btn btn-danger btn-sm" onclick="logout()">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+        <div id="alertaBackup" class="alert alert-danger border-danger shadow-sm d-none fade-in mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="fs-1 me-3 text-danger"><i class="bi bi-cloud-slash-fill"></i></div>
+                <div>
+                    <h5 class="alert-heading fw-bold m-0">Risco de Perda de Dados!</h5>
+                    <p class="mb-0 small">O último backup foi realizado há mais de <strong>7 dias</strong> (ou nunca foi feito).</p>
+                </div>
+                <button class="btn btn-danger fw-bold ms-auto px-4" onclick="modalAdmin.show()">
+                    <i class="bi bi-download"></i> FAZER BACKUP AGORA
+                </button>
+            </div>
+        </div>
+
+        <div class="row align-items-center mb-4">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h3 class="m-0 fw-bold">Carteira</h3>
+                    <div class="d-flex gap-2">
+                        <span class="badge badge-lead fs-6 shadow-sm" id="countLeads">Leads: 0</span>
+                        <span class="badge badge-cliente fs-6 shadow-sm" id="countClientes">Clientes: 0</span>
+                        <span class="badge bg-light text-dark border fs-6" id="countTotal">Total: 0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <button class="btn btn-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNovoCliente">
+                    <i class="bi bi-person-plus-fill"></i> Novo Cadastro
+                </button>
+            </div>
+        </div>
+
+        <div class="card mb-3 p-3 bg-light border-0 shadow-sm">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="inputBusca" class="form-control border-start-0 ps-0" placeholder="Buscar Nome, Email ou Telefone..." onkeyup="aplicarFiltros()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select id="filtroStatus" class="form-select" onchange="aplicarFiltros()">
+                        <option value="todos">Status: Todos</option>
+                        <option value="Lead">Apenas Leads</option>
+                        <option value="Cliente">Apenas Clientes</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="filtroSelect" class="form-select" onchange="aplicarFiltros()">
+                        <option value="criacao">Recentes Primeiro</option>
+                        <option value="alfabetica">A-Z</option>
+                        <option value="diagnostico_futuro">Próximos Diagnósticos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-5">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 5px;"></th>
+                                <th>Nome / Status</th>
+                                <th>Diagnóstico</th>
+                                <th>Contato</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaCorpo"></tbody>
+                    </table>
+                </div>
+                <div id="msgVazio" class="text-center py-5 text-muted d-none">
+                    <i class="bi bi-filter-circle display-6 mb-3 d-block opacity-50"></i>
+                    Nenhum registro encontrado.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalNovoCliente" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Novo Cadastro</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNovo">
+                        <div class="mb-3">
+                            <label class="fw-bold">Nome Completo *</label>
+                            <input type="text" id="novoNome" class="form-control" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="fw-bold text-success">Status</label>
+                                <select id="novoStatus" class="form-select fw-bold" onchange="toggleValor('novo')">
+                                    <option value="Lead">Lead (Potencial)</option>
+                                    <option value="Cliente">Cliente (Pagante)</option>
+                                </select>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label>Data Diagnóstico *</label>
+                                <input type="date" id="novoDataDiag" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 d-none bg-light p-2 rounded border" id="divNovoValor">
+                            <label class="fw-bold text-primary small">Valor da Consultoria (R$)</label>
+                            <input type="number" id="novoValorConsultoria" class="form-control" placeholder="0.00">
+                        </div>
+
+                        <div class="mb-3">
+                            <label>Email</label>
+                            <input type="email" id="novoEmail" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label>Celular</label>
+                            <input type="text" id="novoTel" class="form-control" onkeyup="mascaraTelefone(this)" placeholder="(DD) 9..." maxlength="15">
+                        </div>
+                        <input type="hidden" id="novoDataCriacao">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary fw-bold" onclick="salvarNovoCliente()">Criar Registro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarCliente" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning bg-opacity-25">
+                    <h5 class="modal-title text-dark">Editar Cadastro</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editId">
+                    <div class="mb-3">
+                        <label class="fw-bold">Nome Completo</label>
+                        <input type="text" id="editNome" class="form-control">
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="fw-bold">Status Atual</label>
+                            <select id="editStatus" class="form-select" onchange="toggleValor('edit')">
+                                <option value="Lead">Lead</option>
+                                <option value="Cliente">Cliente</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label>Data Diagnóstico</label>
+                            <input type="date" id="editDataDiag" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3 d-none bg-light p-2 rounded border" id="divEditValor">
+                        <label class="fw-bold text-primary small">Valor da Consultoria (R$)</label>
+                        <input type="number" id="editValorConsultoria" class="form-control" placeholder="0.00">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <input type="email" id="editEmail" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label>Celular</label>
+                        <input type="text" id="editTel" class="form-control" onkeyup="mascaraTelefone(this)">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning fw-bold" onclick="salvarEdicaoCliente()">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalAdminId" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">Ferramentas Admin</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="fw-bold mb-2">Backup e Restauração</p>
+                    <div class="mb-3">
+                        <label class="small text-muted">Senha de Segurança:</label>
+                        <input type="password" id="senhaAdminRestore" class="form-control mb-2" placeholder="Senha Mestra">
+                        <label class="small text-muted">Arquivo JSON:</label>
+                        <input type="file" id="arquivoJson" class="form-control" accept=".json">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="exportarJSON()">Baixar Backup</button>
+                    <button type="button" class="btn btn-danger" onclick="restaurarBackup()">Restaurar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        const modalAdmin = new bootstrap.Modal(document.getElementById('modalAdminId'));
+        const modalNovo = new bootstrap.Modal(document.getElementById('modalNovoCliente'));
+        const modalEdit = new bootstrap.Modal(document.getElementById('modalEditarCliente'));
+
+        document.getElementById('modalNovoCliente').addEventListener('show.bs.modal', function () {
+            document.getElementById('novoDataCriacao').valueAsDate = new Date();
+            // Resetar visualização do campo
+            toggleValor('novo');
+        });
+
+        // --- LÓGICA DE EXIBIÇÃO DO CAMPO ---
+        function toggleValor(prefixo) {
+            const status = document.getElementById(prefixo + 'Status').value;
+            const divValor = document.getElementById('div' + (prefixo === 'novo' ? 'Novo' : 'Edit') + 'Valor');
+            
+            if (status === 'Cliente') {
+                divValor.classList.remove('d-none');
+            } else {
+                divValor.classList.add('d-none');
+            }
+        }
+
+        // --- MONITOR DE BACKUP ---
+        function verificarStatusBackup() {
+            const ultimoBackup = localStorage.getItem("ancora_ultimo_backup");
+            const alerta = document.getElementById("alertaBackup");
+            
+            if (!ultimoBackup) {
+                alerta.classList.remove("d-none");
+                return;
+            }
+
+            const dataUltimo = new Date(ultimoBackup);
+            const agora = new Date();
+            const diasPassados = Math.ceil((agora - dataUltimo) / (1000 * 60 * 60 * 24)); 
+
+            if (diasPassados > 7) alerta.classList.remove("d-none");
+            else alerta.classList.add("d-none");
+        }
+
+        function formatarData(dataISO) {
+            if(!dataISO) return "-";
+            return dataISO.split('-').reverse().join('/');
+        }
+
+        // --- RENDERIZAÇÃO ---
+        function aplicarFiltros() {
+            let db = getDB();
+            
+            const countLeads = db.filter(c => (!c.status || c.status === 'Lead')).length;
+            const countClientes = db.filter(c => c.status === 'Cliente').length;
+            
+            document.getElementById('countLeads').innerText = `Leads: ${countLeads}`;
+            document.getElementById('countClientes').innerText = `Clientes: ${countClientes}`;
+            document.getElementById('countTotal').innerText = `Total: ${db.length}`;
+
+            const termo = document.getElementById('inputBusca').value.toLowerCase();
+            const ordem = document.getElementById('filtroSelect').value;
+            const filtroStatus = document.getElementById('filtroStatus').value;
+
+            if(termo.length > 0) {
+                db = db.filter(c => 
+                    c.nome.toLowerCase().includes(termo) || 
+                    (c.email && c.email.toLowerCase().includes(termo)) ||
+                    (c.telefone && c.telefone.includes(termo))
+                );
+            }
+
+            if (filtroStatus !== 'todos') {
+                db = db.filter(c => (c.status || 'Lead') === filtroStatus);
+            }
+
+            if(ordem === 'alfabetica') {
+                db.sort((a, b) => a.nome.localeCompare(b.nome));
+            } else if (ordem === 'criacao') {
+                db.sort((a, b) => new Date(b.dataCriacao || 0) - new Date(a.dataCriacao || 0));
+            } else if (ordem === 'diagnostico_futuro') {
+                const hoje = new Date().toISOString().split('T')[0];
+                db = db.filter(c => c.dataDiagnostico > hoje);
+                db.sort((a, b) => new Date(a.dataDiagnostico) - new Date(b.dataDiagnostico));
+            }
+
+            renderizarLinhas(db);
+        }
+
+        function renderizarLinhas(lista) {
+            const tbody = document.getElementById('tabelaCorpo');
+            const msgVazio = document.getElementById('msgVazio');
+            tbody.innerHTML = '';
+
+            if(lista.length === 0) {
+                msgVazio.classList.remove('d-none');
+            } else {
+                msgVazio.classList.add('d-none');
+                
+                lista.forEach((c) => {
+                    const isCliente = c.status === 'Cliente';
+                    const badgeHtml = isCliente 
+                        ? '<span class="badge badge-cliente ms-2">Cliente</span>' 
+                        : '<span class="badge badge-lead ms-2">Lead</span>';
+                    const corFaixa = isCliente ? '#198754' : '#6c757d';
+                    
+                    // Exibe valor se for cliente e tiver valor
+                    const valorHtml = (isCliente && c.valorConsultoria && c.valorConsultoria > 0)
+                        ? `<div class="text-success small fw-bold mt-1"><i class="bi bi-cash"></i> ${formatarMoeda(c.valorConsultoria)}</div>`
+                        : '';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="background-color: ${corFaixa}; padding:0;"></td>
+                        <td>
+                            <div class="fw-bold cursor-pointer text-primary" onclick="abrirCliente('${c.id}')">${c.nome}</div>
+                            <small>${badgeHtml}</small>
+                            ${valorHtml}
+                        </td>
+                        <td class="small cursor-pointer" onclick="abrirCliente('${c.id}')">
+                            <div class="text-muted">Agendado:</div>
+                            <strong>${formatarData(c.dataDiagnostico)}</strong>
+                        </td>
+                        <td class="small">
+                            <div>${c.telefone || '-'}</div>
+                            <div class="text-muted text-truncate" style="max-width: 150px;">${c.email || '-'}</div>
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalEditar('${c.id}')"><i class="bi bi-pencil-fill"></i></button>
+                            <a href="relatorio.html?id=${c.id}" target="_blank" class="btn btn-sm btn-outline-dark me-1"><i class="bi bi-printer-fill"></i></a>
+                            <button class="btn btn-sm btn-outline-danger me-1" onclick="excluirCliente('${c.id}')"><i class="bi bi-trash"></i></button>
+                            <button class="btn btn-sm btn-primary" onclick="abrirCliente('${c.id}')"><i class="bi bi-arrow-right"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        // --- CRUD ---
+        function abrirCliente(id) { navegarPara(`dados_pessoais.html?id=${id}`); }
+
+        function salvarNovoCliente() {
+            const nome = document.getElementById('novoNome').value;
+            const dataDiag = document.getElementById('novoDataDiag').value;
+            
+            if(!nome || !dataDiag) { 
+                exibirMensagem("Nome e Data do Diagnóstico são obrigatórios!", "erro"); 
+                return; 
+            }
+
+            const db = getDB();
+            const status = document.getElementById('novoStatus').value;
+            const valorCons = document.getElementById('novoValorConsultoria').value;
+
+            const novo = {
+                id: Date.now().toString(),
+                nome: nome,
+                status: status,
+                // Salva valor apenas se for cliente
+                valorConsultoria: status === 'Cliente' ? (parseFloat(valorCons) || 0) : 0,
+                dataDiagnostico: dataDiag,
+                dataCriacao: document.getElementById('novoDataCriacao').value || new Date().toISOString().split('T')[0],
+                email: document.getElementById('novoEmail').value,
+                telefone: document.getElementById('novoTel').value,
+                dadosPessoais: {} 
+            };
+            
+            db.push(novo);
+            saveDB(db);
+            modalNovo.hide();
+            document.getElementById('formNovo').reset();
+            aplicarFiltros();
+            exibirMensagem("Novo registro criado!", "sucesso");
+        }
+
+        function abrirModalEditar(id) {
+            const db = getDB();
+            const c = db.find(cli => cli.id === id);
+            if (!c) return;
+
+            document.getElementById('editId').value = c.id;
+            document.getElementById('editNome').value = c.nome;
+            document.getElementById('editStatus').value = c.status || 'Lead';
+            document.getElementById('editValorConsultoria').value = c.valorConsultoria || '';
+            document.getElementById('editDataDiag').value = c.dataDiagnostico;
+            document.getElementById('editEmail').value = c.email || '';
+            document.getElementById('editTel').value = c.telefone || '';
+            
+            // Ajusta visibilidade do campo
+            toggleValor('edit');
+            
+            modalEdit.show();
+        }
+
+        function salvarEdicaoCliente() {
+            const id = document.getElementById('editId').value;
+            const db = getDB();
+            const index = db.findIndex(c => c.id === id);
+
+            if (index !== -1) {
+                const status = document.getElementById('editStatus').value;
+                const valorCons = document.getElementById('editValorConsultoria').value;
+
+                db[index].nome = document.getElementById('editNome').value;
+                db[index].status = status;
+                db[index].valorConsultoria = status === 'Cliente' ? (parseFloat(valorCons) || 0) : 0;
+                db[index].dataDiagnostico = document.getElementById('editDataDiag').value;
+                db[index].email = document.getElementById('editEmail').value;
+                db[index].telefone = document.getElementById('editTel').value;
+
+                saveDB(db);
+                modalEdit.hide();
+                aplicarFiltros();
+                exibirMensagem("Cadastro atualizado!", "sucesso");
+            }
+        }
+
+        function excluirCliente(id) {
+            exibirConfirmacao("TEM CERTEZA?<br>Essa ação apaga permanentemente todos os dados financeiros e cadastrais deste cliente.", () => {
+                let db = getDB();
+                db = db.filter(c => c.id !== id);
+                saveDB(db);
+                aplicarFiltros();
+                exibirMensagem("Registro excluído.", "sucesso");
+            });
+        }
+        
+        function exportarJSON() {
+            const db = getDB();
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+            const node = document.createElement('a');
+            node.setAttribute("href", dataStr);
+            node.setAttribute("download", `backup_ancora_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(node);
+            node.click();
+            node.remove();
+            localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+            exibirMensagem("Backup gerado! Contador resetado.", "sucesso");
+            verificarStatusBackup();
+        }
+
+        function restaurarBackup() {
+            const senha = document.getElementById('senhaAdminRestore').value;
+            const fileInput = document.getElementById('arquivoJson');
+            if(senha !== SENHA_MESTRA) { exibirMensagem("Senha incorreta!", "erro"); return; }
+            if(fileInput.files.length === 0) { exibirMensagem("Selecione um arquivo JSON!", "aviso"); return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if(!Array.isArray(json)) throw new Error("Formato inválido");
+                    saveDB(json);
+                    localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+                    modalAdmin.hide(); 
+                    exibirMensagem(`Backup restaurado! ${json.length} registros carregados.`, "sucesso", () => location.reload());
+                } catch(err) {
+                    exibirMensagem("Erro no arquivo. Verifique o formato.", "erro");
+                }
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+
+        aplicarFiltros();
+        verificarStatusBackup();
+    </script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Planejamento Financeiro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .task-done { text-decoration: line-through; color: #adb5bd; }
+        .bg-ideal { background-color: #e3f2fd; border-left: 4px solid #0d6efd; }
+    </style>
+</head>
+<body>
+
+    <div id="alertaNaoSalvo" class="alert alert-warning text-center m-0 hidden">
+        ⚠️ <strong>ALTERAÇÕES PENDENTES!</strong> Salve antes de sair.
+    </div>
+
+    <nav class="navbar navbar-custom px-4 sticky-top">
+        <div class="container-fluid">
+            <button class="navbar-toggler bg-light me-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuLateral">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <a class="navbar-brand text-white" href="#" id="headerNomeCliente">Planejamento</a>
+            <div class="d-flex gap-2 ms-auto">
+                <button class="btn btn-success btn-sm fw-bold" onclick="salvarAlteracoes()"><i class="bi bi-save"></i> SALVAR</button>
+                <button class="btn btn-outline-light btn-sm" onclick="voltarIndex()"><i class="bi bi-arrow-return-left"></i> Voltar</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="menuLateral">
+        <div class="offcanvas-header bg-dark text-white">
+            <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral"></div>
+    </div>
+
+    <div class="container mt-4 mb-5 pb-5">
+        
+        <div id="avisoRenda" class="alert alert-danger hidden">
+            <i class="bi bi-exclamation-triangle-fill"></i> Atenção: A renda mensal do cliente não está definida em "Dados Pessoais". Os cálculos em R$ não funcionarão.
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <h4 class="section-title mt-0">Fluxo de Caixa Sugerido (Meta)</h4>
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body">
+                        <div class="row align-items-center mb-3">
+                            <div class="col-6">
+                                <h5 class="m-0 text-primary">Renda Base: <span id="displayRenda">R$ 0,00</span></h5>
+                            </div>
+                            <div class="col-6 text-end">
+                                <span class="badge bg-dark" id="displayTotalPct">Total: 0%</span>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-danger">Essenciais (Fixo)</label>
+                                <div class="input-group">
+                                    <input type="number" id="planEssencialPct" class="form-control" placeholder="50" oninput="calcularReais()">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="mt-2 text-muted fw-bold" id="resEssencial">R$ 0,00</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-warning">Estilo de Vida (Var.)</label>
+                                <div class="input-group">
+                                    <input type="number" id="planEstiloPct" class="form-control" placeholder="30" oninput="calcularReais()">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="mt-2 text-muted fw-bold" id="resEstilo">R$ 0,00</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-success">Investimentos</label>
+                                <div class="input-group">
+                                    <input type="number" id="planInvestPct" class="form-control" placeholder="20" oninput="calcularReais()">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="mt-2 text-muted fw-bold" id="resInvest">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="section-title">Observações e Estratégia</h4>
+                <textarea id="obsGeral" class="form-control shadow-sm mb-4" rows="5" placeholder="Escreva aqui a estratégia detalhada, pontos de atenção e recomendações gerais..."></textarea>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted mb-3">Distribuição Ideal</h6>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="graficoPlanejamento"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-5">
+
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="section-title my-0">Tarefas para o Próximo Encontro</h4>
+                    <span class="badge bg-secondary" id="contadorTarefas">0 pendentes</span>
+                </div>
+
+                <div class="input-group mb-4 shadow-sm">
+                    <input type="text" id="inputNovaTarefa" class="form-control form-control-lg" placeholder="O que o cliente precisa fazer?">
+                    <button class="btn btn-primary px-4 fw-bold" onclick="adicionarTarefa()">ADICIONAR TAREFA</button>
+                </div>
+
+                <div class="card shadow-sm border-0">
+                    <ul class="list-group list-group-flush" id="listaTarefas">
+                        </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const clientId = params.get('id');
+        let currentClient = null;
+        let isDirty = false;
+        let chartInstance = null;
+        
+        // Dados locais
+        let tarefas = [];
+        let planejamento = {
+            essencialPct: 50,
+            estiloPct: 30,
+            investPct: 20,
+            observacoes: ""
+        };
+        let rendaCliente = 0;
+
+        function init() {
+            if(!clientId) {
+                exibirMensagem("Erro: Cliente não identificado.", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
+            carregarDados();
+            construirMenuLateral(clientId);
+        }
+
+        function carregarDados() {
+            const db = getDB();
+            currentClient = db.find(c => c.id === clientId);
+
+            if (!currentClient) {
+                exibirMensagem("Cliente não encontrado!", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
+
+            document.getElementById('headerNomeCliente').innerText = `Plano: ${currentClient.nome}`;
+            
+            // Carrega Renda dos Dados Pessoais
+            rendaCliente = parseFloat(currentClient.dadosPessoais?.rendaMensal || 0);
+            document.getElementById('displayRenda').innerText = formatarMoeda(rendaCliente);
+
+            if(rendaCliente === 0) {
+                document.getElementById('avisoRenda').classList.remove('hidden');
+            }
+
+            // Carrega Planejamento Salvo ou Usa Padrão
+            if(currentClient.planejamento) {
+                planejamento = currentClient.planejamento.meta || planejamento;
+                tarefas = currentClient.planejamento.tarefas || [];
+                document.getElementById('obsGeral').value = currentClient.planejamento.observacoes || "";
+            }
+
+            // Preenche Inputs
+            document.getElementById('planEssencialPct').value = planejamento.essencialPct;
+            document.getElementById('planEstiloPct').value = planejamento.estiloPct;
+            document.getElementById('planInvestPct').value = planejamento.investPct;
+
+            calcularReais();
+            renderizarTarefas();
+
+            isDirty = false;
+            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+        }
+
+        function calcularReais() {
+            const essPct = parseFloat(document.getElementById('planEssencialPct').value) || 0;
+            const estPct = parseFloat(document.getElementById('planEstiloPct').value) || 0;
+            const invPct = parseFloat(document.getElementById('planInvestPct').value) || 0;
+
+            const totalPct = essPct + estPct + invPct;
+            const displayTotal = document.getElementById('displayTotalPct');
+            displayTotal.innerText = `Total: ${totalPct}%`;
+            
+            if(totalPct !== 100) {
+                displayTotal.className = 'badge bg-warning text-dark';
+                displayTotal.innerText += " (Ajuste para 100%)";
+            } else {
+                displayTotal.className = 'badge bg-success';
+            }
+
+            document.getElementById('resEssencial').innerText = formatarMoeda(rendaCliente * (essPct/100));
+            document.getElementById('resEstilo').innerText = formatarMoeda(rendaCliente * (estPct/100));
+            document.getElementById('resInvest').innerText = formatarMoeda(rendaCliente * (invPct/100));
+
+            planejamento.essencialPct = essPct;
+            planejamento.estiloPct = estPct;
+            planejamento.investPct = invPct;
+
+            atualizarGrafico(essPct, estPct, invPct);
+            marcarComoSujo();
+        }
+
+        function atualizarGrafico(ess, est, inv) {
+            const ctx = document.getElementById('graficoPlanejamento').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Essenciais', 'Estilo de Vida', 'Investimentos'],
+                    datasets: [{
+                        data: [ess, est, inv],
+                        backgroundColor: ['#dc3545', '#ffc107', '#198754'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        // --- TAREFAS ---
+
+        function adicionarTarefa() {
+            const input = document.getElementById('inputNovaTarefa');
+            const desc = input.value;
+            if(!desc) return;
+
+            tarefas.push({ descricao: desc, feita: false });
+            input.value = '';
+            marcarComoSujo();
+            renderizarTarefas();
+        }
+
+        function toggleTarefa(index) {
+            tarefas[index].feita = !tarefas[index].feita;
+            marcarComoSujo();
+            renderizarTarefas();
+        }
+
+        function removerTarefa(index) {
+            tarefas.splice(index, 1);
+            marcarComoSujo();
+            renderizarTarefas();
+        }
+
+        function renderizarTarefas() {
+            const ul = document.getElementById('listaTarefas');
+            ul.innerHTML = '';
+            let pendentes = 0;
+
+            tarefas.forEach((t, index) => {
+                if(!t.feita) pendentes++;
+                const li = document.createElement('li');
+                li.className = `list-group-item d-flex justify-content-between align-items-center p-3 ${t.feita ? 'bg-light' : ''}`;
+                li.innerHTML = `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" ${t.feita ? 'checked' : ''} onchange="toggleTarefa(${index})" style="cursor:pointer; transform: scale(1.2);">
+                        <label class="form-check-label ms-2 ${t.feita ? 'task-done' : 'fw-bold'}" style="user-select:none;">
+                            ${t.descricao}
+                        </label>
+                    </div>
+                    <button class="btn btn-sm text-danger" onclick="removerTarefa(${index})"><i class="bi bi-trash"></i></button>
+                `;
+                ul.appendChild(li);
+            });
+
+            if(tarefas.length === 0) {
+                ul.innerHTML = '<li class="list-group-item text-center text-muted py-4">Nenhuma tarefa definida.</li>';
+            }
+
+            document.getElementById('contadorTarefas').innerText = `${pendentes} pendentes`;
+        }
+
+        // --- SALVAMENTO ---
+
+        function marcarComoSujo() {
+            if(document.getElementById('planEssencialPct').value !== "") {
+                isDirty = true;
+                document.getElementById('alertaNaoSalvo').classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('obsGeral').addEventListener('input', marcarComoSujo);
+
+        // AQUI ESTAVA O ERRO: Restaurei a lógica de salvar os dados reais
+        function salvarAlteracoes(silencioso = false) {
+            const db = getDB();
+            const idx = db.findIndex(c => c.id === clientId);
+            
+            if (idx !== -1) {
+                // --- CORREÇÃO: Captura os dados reais do planejamento ---
+                db[idx].planejamento = {
+                    meta: planejamento, // Variável global que guarda as %
+                    observacoes: document.getElementById('obsGeral').value,
+                    tarefas: tarefas // Variável global que guarda a lista
+                };
+
+                saveDB(db);
+                isDirty = false;
+                document.getElementById('alertaNaoSalvo').classList.add('hidden');
+
+                if (!silencioso) {
+                    exibirMensagem("Planejamento e tarefas salvos com sucesso!", "sucesso");
+                }
+            }
+        }
+
+        function voltarIndex() {
+            navegarPara('clientes.html');
+        }
+
+        init();
+    </script>
+</body>
+</html>
