@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Fluxo de Caixa</title>
+    <title>Fluxo de Caixa (PRO)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -28,13 +28,12 @@
     </nav>
 
     <div class="offcanvas offcanvas-start" tabindex="-1" id="menuLateral">
-    <div class="offcanvas-header bg-dark text-white">
-        <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral">
+        <div class="offcanvas-header bg-dark text-white">
+            <h5 class="offcanvas-title"><i class="bi bi-menu-button-wide"></i> Navegação</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
         </div>
-</div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="conteudoMenuLateral"></div>
+    </div>
 
     <div class="container mt-4 mb-5 pb-5">
         
@@ -51,12 +50,22 @@
                 <div class="card shadow-sm h-100 bg-light">
                     <div class="card-body">
                         <h5 class="card-title border-bottom pb-2">Gerenciar Períodos</h5>
-                        <label class="form-label mt-2">Selecionar Mês/Ano</label>
+                        
+                        <label class="form-label mt-2">Criar Novo Mês</label>
                         <div class="input-group mb-3">
                             <input type="month" id="inputMesAno" class="form-control">
-                            <button class="btn btn-primary" onclick="criarMes()">+ Criar/Abrir</button>
+                            <button class="btn btn-primary" onclick="criarMes()">+ Abrir</button>
                         </div>
-                        <p class="small text-muted">Selecione um mês para adicionar lançamentos. O gráfico atualiza automaticamente.</p>
+
+                        <div class="mt-4 pt-3 border-top">
+                            <label class="form-label fw-bold text-success"><i class="bi bi-filetype-json"></i> Importar Lançamentos</label>
+                            <input type="file" id="inputJsonImport" class="d-none" accept=".json" onchange="processarImportacao(this)">
+                            <button class="btn btn-outline-success w-100" onclick="document.getElementById('inputJsonImport').click()">
+                                <i class="bi bi-upload"></i> Carregar Arquivo JSON
+                            </button>
+                            <p class="small text-muted mt-1">Os dados serão distribuídos automaticamente nos meses correspondentes.</p>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -65,8 +74,7 @@
         <hr>
 
         <h4 class="section-title">Detalhamento Mensal</h4>
-        <div id="containerMeses" class="d-flex flex-column gap-4">
-            </div>
+        <div id="containerMeses" class="d-flex flex-column gap-4"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -75,58 +83,102 @@
         const params = new URLSearchParams(window.location.search);
         const clientId = params.get('id');
         let currentClient = null;
-        let fluxoCaixa = {}; // Estrutura: { "2025-12": { receitas: [], fixos: [], variaveis: [] } }
+        let fluxoCaixa = {}; 
         let isDirty = false;
         let chartInstance = null;
 
-        // 1. Inicialização
         function init() {
-            // Setup Menu Links
-
             carregarDados();
-            // ADICIONE ESTA LINHA NO FINAL DA FUNÇÃO:
-    construirMenuLateral(clientId);
+            construirMenuLateral(clientId);
         }
 
         function carregarDados() {
             const db = getDB();
-    currentClient = db.find(c => c.id === clientId);
+            currentClient = db.find(c => c.id === clientId);
 
-    if (!currentClient) {
-        exibirMensagem("Erro: Cliente não identificado.", "erro", () => window.location.href = 'clientes.html');
-        return;
-    }
+            if (!currentClient) {
+                exibirMensagem("Erro: Cliente não identificado.", "erro", () => window.location.href = 'clientes.html');
+                return;
+            }
 
             document.getElementById('headerNomeCliente').innerText = `Caixa: ${currentClient.nome}`;
-            
-            // Carrega ou inicia vazio
             fluxoCaixa = currentClient.fluxoCaixa || {};
-            
             renderizarMeses();
             atualizarGrafico();
         }
 
-        // 2. Lógica de Criação de Mês
-       function criarMes() {
-    const val = document.getElementById('inputMesAno').value;
-    if(!val) { exibirMensagem("Selecione um mês e ano.", "aviso"); return; }
+        // --- IMPORTAÇÃO DE JSON (LÓGICA PRO) ---
+        function processarImportacao(input) {
+            const file = input.files[0];
+            if(!file) return;
 
-    if(!fluxoCaixa[val]) {
-        fluxoCaixa[val] = { receitas: [], fixos: [], variaveis: [] };
-        marcarComoSujo();
-    } else {
-        exibirMensagem("Este mês já existe na lista abaixo.", "aviso");
-    }
-    renderizarMeses();
-    atualizarGrafico();
-}
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const transacoes = JSON.parse(e.target.result);
+                    if(!Array.isArray(transacoes)) throw new Error("O arquivo deve conter uma lista (array) de transações.");
 
-        // 3. Renderização dos Cards de Meses
+                    let count = 0;
+                    transacoes.forEach(t => {
+                        // Validação básica
+                        if(!t.data || !t.valor || !t.tipo) return;
+                        
+                        // Extrai YYYY-MM
+                        const mesKey = t.data.substring(0, 7); 
+                        
+                        // Cria mês se não existir
+                        if(!fluxoCaixa[mesKey]) {
+                            fluxoCaixa[mesKey] = { receitas: [], fixos: [], variaveis: [] };
+                        }
+
+                        // Mapeia tipos (segurança caso o JSON venha com caixa alta/baixa)
+                        let categoria = t.tipo.toLowerCase();
+                        if(!['receitas', 'fixos', 'variaveis'].includes(categoria)) return;
+
+                        fluxoCaixa[mesKey][categoria].push({
+                            desc: t.descricao || "Importado",
+                            valor: parseFloat(t.valor)
+                        });
+                        count++;
+                    });
+
+                    if(count > 0) {
+                        marcarComoSujo();
+                        renderizarMeses();
+                        atualizarGrafico();
+                        exibirMensagem(`${count} lançamentos importados com sucesso!`, "sucesso");
+                    } else {
+                        exibirMensagem("Nenhuma transação válida encontrada no arquivo.", "aviso");
+                    }
+
+                } catch(err) {
+                    console.error(err);
+                    exibirMensagem("Erro ao processar arquivo. Verifique o formato JSON.", "erro");
+                }
+            };
+            reader.readAsText(file);
+            input.value = ""; // Limpa input
+        }
+        // ----------------------------------------
+
+        function criarMes() {
+            const val = document.getElementById('inputMesAno').value;
+            if(!val) { exibirMensagem("Selecione um mês e ano.", "aviso"); return; }
+
+            if(!fluxoCaixa[val]) {
+                fluxoCaixa[val] = { receitas: [], fixos: [], variaveis: [] };
+                marcarComoSujo();
+            } else {
+                exibirMensagem("Este mês já existe na lista abaixo.", "aviso");
+            }
+            renderizarMeses();
+            atualizarGrafico();
+        }
+
         function renderizarMeses() {
             const container = document.getElementById('containerMeses');
             container.innerHTML = '';
 
-            // Ordenar chaves decrescente (mais recente primeiro)
             const mesesOrdenados = Object.keys(fluxoCaixa).sort().reverse();
 
             if(mesesOrdenados.length === 0) {
@@ -139,7 +191,6 @@
                 const [ano, mes] = mesKey.split('-');
                 const nomeMes = new Date(ano, mes - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
-                // Cálculos
                 const totalReceitas = somar(dadosMes.receitas);
                 const totalFixos = somar(dadosMes.fixos);
                 const totalVariaveis = somar(dadosMes.variaveis);
@@ -148,7 +199,6 @@
                 
                 const corSaldo = saldo >= 0 ? 'text-success' : 'text-danger';
 
-                // HTML do Card
                 const card = document.createElement('div');
                 card.className = 'card shadow-sm border-0';
                 card.innerHTML = `
@@ -192,7 +242,6 @@
             });
         }
 
-        // Helpers de Renderização
         function gerarInput(mesKey, tipo, placeholder) {
             return `
                 <div class="input-group input-group-sm mb-2">
@@ -220,24 +269,15 @@
             return html;
         }
 
-        function somar(lista) {
-            return lista.reduce((acc, item) => acc + (parseFloat(item.valor) || 0), 0);
-        }
+        function somar(lista) { return lista.reduce((acc, item) => acc + (parseFloat(item.valor) || 0), 0); }
 
-        // 4. Manipulação de Dados (CRUD Interno)
         function addLancamento(mesKey, tipo) {
-            const descInput = document.getElementById(`desc-${mesKey}-${tipo}`);
-            const valInput = document.getElementById(`val-${mesKey}-${tipo}`);
-            
-            const desc = descInput.value;
-            const valor = valInput.value;
-
+            const desc = document.getElementById(`desc-${mesKey}-${tipo}`).value;
+            const valor = document.getElementById(`val-${mesKey}-${tipo}`).value;
             if(!desc || !valor) return;
-
             fluxoCaixa[mesKey][tipo].push({ desc, valor });
-            
             marcarComoSujo();
-            renderizarMeses(); // Re-renderiza tudo para atualizar totais
+            renderizarMeses(); 
             atualizarGrafico();
         }
 
@@ -249,26 +289,18 @@
         }
 
         function excluirMes(mesKey) {
-    exibirConfirmacao(`Tem certeza que deseja apagar todo o registro de <strong>${mesKey}</strong>?`, () => {
-        delete fluxoCaixa[mesKey];
-        marcarComoSujo();
-        renderizarMeses();
-        atualizarGrafico();
-    });
-}
+            exibirConfirmacao(`Tem certeza que deseja apagar todo o registro de <strong>${mesKey}</strong>?`, () => {
+                delete fluxoCaixa[mesKey];
+                marcarComoSujo();
+                renderizarMeses();
+                atualizarGrafico();
+            });
+        }
 
-        // 5. Gráficos (Chart.js)
         function atualizarGrafico() {
             const ctx = document.getElementById('graficoFluxo').getContext('2d');
-            
-            // Ordenar dados cronologicamente para o gráfico (Crescente)
             const keys = Object.keys(fluxoCaixa).sort();
-            
-            const labels = keys.map(k => {
-                const [ano, mes] = k.split('-');
-                return `${mes}/${ano.slice(2)}`;
-            });
-
+            const labels = keys.map(k => { const [ano, mes] = k.split('-'); return `${mes}/${ano.slice(2)}`; });
             const dataReceitas = keys.map(k => somar(fluxoCaixa[k].receitas));
             const dataDespesas = keys.map(k => somar(fluxoCaixa[k].fixos) + somar(fluxoCaixa[k].variaveis));
 
@@ -279,64 +311,33 @@
                 data: {
                     labels: labels,
                     datasets: [
-                        {
-                            label: 'Receitas',
-                            data: dataReceitas,
-                            backgroundColor: 'rgba(25, 135, 84, 0.7)',
-                            borderColor: 'rgba(25, 135, 84, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Despesas Totais',
-                            data: dataDespesas,
-                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                            borderColor: 'rgba(220, 53, 69, 1)',
-                            borderWidth: 1
-                        }
+                        { label: 'Receitas', data: dataReceitas, backgroundColor: 'rgba(25, 135, 84, 0.7)', borderColor: 'rgba(25, 135, 84, 1)', borderWidth: 1 },
+                        { label: 'Despesas Totais', data: dataDespesas, backgroundColor: 'rgba(220, 53, 69, 0.7)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1 }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
             });
         }
 
-        // 6. Salvamento Global
         function marcarComoSujo() {
             isDirty = true;
             document.getElementById('alertaNaoSalvo').classList.remove('hidden');
         }
 
-        // Adicione o parâmetro (silencioso = false)
-function salvarAlteracoes(silencioso = false) {
-    const db = getDB();
-    const idx = db.findIndex(c => c.id === clientId);
-    
-    if (idx !== -1) {
-        // CORREÇÃO:
-        db[idx].fluxoCaixa = fluxoCaixa;
-        
-        saveDB(db);
-        isDirty = false;
-        document.getElementById('alertaNaoSalvo').classList.add('hidden');
-
-        if (!silencioso) {
-            exibirMensagem("Fluxo de Caixa salvo com sucesso!", "sucesso");
+        function salvarAlteracoes(silencioso = false) {
+            const db = getDB();
+            const idx = db.findIndex(c => c.id === clientId);
+            if (idx !== -1) {
+                db[idx].fluxoCaixa = fluxoCaixa;
+                saveDB(db);
+                isDirty = false;
+                document.getElementById('alertaNaoSalvo').classList.add('hidden');
+                if (!silencioso) exibirMensagem("Fluxo de Caixa salvo com sucesso!", "sucesso");
+            }
         }
-    }
-}
 
-       function voltarIndex() {
-    navegarPara('clientes.html');
-}
-
-        window.onbeforeunload = function() {
-            if (isDirty) return "Salve suas alterações.";
-        };
+        function voltarIndex() { navegarPara('clientes.html'); }
+        window.onbeforeunload = function() { if (isDirty) return "Salve suas alterações."; };
 
         init();
     </script>
