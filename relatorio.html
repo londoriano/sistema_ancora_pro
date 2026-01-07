@@ -71,9 +71,12 @@
 <body>
 
     <div class="container mt-3 mb-4 no-print d-flex justify-content-between">
-        <button class="btn btn-secondary" onclick="window.close()">Fechar</button>
+        <button class="btn btn-secondary" id="btnNavAction">
+            Carregando...
+        </button>
+        
         <div class="alert alert-info py-1 px-3 m-0 small">
-            <i class="bi bi-info-circle"></i> Configuração sugerida: Papel A4, Margens Padrão, Sem Cabeçalho/Rodapé.
+            <i class="bi bi-info-circle"></i> Sugestão: Imprimir em A4, Margens Padrão, Sem Cabeçalho.
         </div>
         <button class="btn btn-dark fw-bold" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
     </div>
@@ -202,7 +205,7 @@
                     <tr><td>Aporte Mensal</td><td class="text-end fw-bold" id="apoMensal">-</td></tr>
                     <tr><td>Aporte Esporádico (Anual)</td><td class="text-end fw-bold" id="apoExtra">-</td></tr>
                     <tr><td>Prazo Acumulação</td><td class="text-end fw-bold" id="apoPrazo">-</td></tr>
-                    <tr><td>Rentabilidade Fase 1</td><td class="text-end fw-bold" id="apoRent">-</td></tr>
+                    <tr><td>Rentabilidade</td><td class="text-end fw-bold" id="apoRent">-</td></tr>
                     <tr><td>IR no Resgate Total</td><td class="text-end fw-bold text-danger" id="apoIR">-</td></tr>
                 </table>
             </div>
@@ -289,11 +292,26 @@
     <script>
         const params = new URLSearchParams(window.location.search);
         const clientId = params.get('id');
+        // NOVA VARIÁVEL
+        const viewMode = params.get('mode'); 
 
         window.onload = function() {
-            if(!clientId) return alert("Erro de ID");
+            // --- LÓGICA DO BOTÃO ---
+            const btn = document.getElementById('btnNavAction');
+            if (viewMode === 'print') {
+                btn.innerHTML = 'Fechar';
+                btn.onclick = () => window.close();
+            } else {
+                btn.innerHTML = '<i class="bi bi-arrow-left"></i> Voltar';
+                btn.onclick = () => voltarParaPerfil();
+            }
+            // -----------------------
+
+            if(!clientId) return alert("Erro de ID: Cliente não selecionado.");
+            
             const db = getDB();
             const c = db.find(x => x.id === clientId);
+            
             if(!c) return alert("Cliente não encontrado");
 
             // 1. CAPA
@@ -305,15 +323,13 @@
             document.getElementById('repProf').innerText = dp.profissao || '-';
             document.getElementById('repObs').innerText = dp.observacoesGerais || "Sem observações.";
 
-            // 2. BALANÇO (Calculo inicial simples)
+            // 2. BALANÇO
             const divDef = c.endividamento || [];
             const invDef = c.investimentos || [];
             
-            // Calculo Detalhado de Dívidas (Atualizado)
             let totalDiv = 0;
             let totalOf = 0;
 
-            // Filtra e soma
             divDef.forEach(d => {
                 if(d.status !== 'paga') {
                     totalDiv += parseFloat(d.valorAtual || 0);
@@ -341,14 +357,13 @@
                 });
             }
 
-            // 4. ENDIVIDAMENTO (Renderização Detalhada)
+            // 4. ENDIVIDAMENTO
             const divCont = document.getElementById('containerDividas');
             if(divDef.length === 0) {
                 divCont.innerHTML = '<div class="col-12 fst-italic text-muted">Sem dívidas.</div>';
                 document.getElementById('totalDividas').innerText = formatarMoeda(0);
                 document.getElementById('totalOfertas').innerText = formatarMoeda(0);
             } else {
-                // Ordena por Prioridade (1 a 7, nulos vão pro fim)
                 divDef.sort((a,b) => (parseInt(a.prioridade)||99) - (parseInt(b.prioridade)||99));
 
                 divDef.forEach(d => {
@@ -361,12 +376,10 @@
                                         <span class="badge" style="border:1px solid #333; color:#333; font-size:0.75rem;">P${d.prioridade || 7}</span>
                                     </div>
                                     <div class="small text-muted mb-2 fst-italic">${d.tipo || 'Não classificado'}</div>
-                                    
                                     <div class="d-flex justify-content-between small mt-2 pt-2 border-top">
                                         <span>Atual: <strong>${formatarMoeda(d.valorAtual)}</strong></span>
                                         <span>Juros: ${d.juros}% a.m.</span>
                                     </div>
-                                    
                                     ${parseFloat(d.oferta) > 0 ? `
                                         <div class="mt-2 text-end small fw-bold text-success" style="border-top:1px dashed #ccc; padding-top:4px;">
                                             Acordo: ${formatarMoeda(d.oferta)}
@@ -376,7 +389,6 @@
                             </div>`;
                     }
                 });
-                
                 document.getElementById('totalDividas').innerText = formatarMoeda(totalDiv);
                 document.getElementById('totalOfertas').innerText = formatarMoeda(totalOf);
             }
@@ -498,8 +510,6 @@
             // 10. PLANEJAMENTO FINAL
             const plan = c.planejamento || {};
             const meta = plan.meta || { essencialPct: 50, estiloPct: 30, investPct: 20 };
-            
-            // Tenta pegar renda atualizada
             const rendaAtual = parseFloat(c.dadosPessoais?.rendaMensal || 0);
             
             document.getElementById('repRenda').innerText = formatarMoeda(rendaAtual);
@@ -529,12 +539,17 @@
             }
         };
 
+        // Função de retorno inteligente
+        function voltarParaPerfil() {
+            if(clientId) {
+                window.location.href = `dados_pessoais.html?id=${clientId}`;
+            } else {
+                window.location.href = 'clientes.html';
+            }
+        }
+
         function formatarMoeda(valor) {
             return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
-        function getDB() {
-            const data = localStorage.getItem("consultoria_db");
-            return data ? JSON.parse(data) : [];
         }
     </script>
 </body>

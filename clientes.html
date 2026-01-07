@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Carteira de Clientes</title>
+    <title>Carteira de Clientes (PRO)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="style.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -35,9 +35,9 @@
                     <h5 class="alert-heading fw-bold m-0">Risco de Perda de Dados!</h5>
                     <p class="mb-0 small">O último backup foi realizado há mais de <strong>7 dias</strong> (ou nunca foi feito).</p>
                 </div>
-               <button class="btn btn-danger fw-bold ms-auto px-4" onclick="exportarJSON()">
-    <i class="bi bi-download"></i> FAZER BACKUP AGORA
-</button>
+                <button class="btn btn-danger fw-bold ms-auto px-4" onclick="exportarJSON()">
+                    <i class="bi bi-download"></i> FAZER BACKUP AGORA
+                </button>
             </div>
         </div>
 
@@ -134,12 +134,10 @@
                                 <input type="date" id="novoDataDiag" class="form-control" required>
                             </div>
                         </div>
-                        
                         <div class="mb-3 d-none bg-light p-2 rounded border" id="divNovoValor">
                             <label class="fw-bold text-primary small">Valor da Consultoria (R$)</label>
                             <input type="number" id="novoValorConsultoria" class="form-control" placeholder="0.00">
                         </div>
-
                         <div class="mb-3">
                             <label>Email</label>
                             <input type="email" id="novoEmail" class="form-control">
@@ -185,12 +183,10 @@
                             <input type="date" id="editDataDiag" class="form-control">
                         </div>
                     </div>
-
                     <div class="mb-3 d-none bg-light p-2 rounded border" id="divEditValor">
                         <label class="fw-bold text-primary small">Valor da Consultoria (R$)</label>
                         <input type="number" id="editValorConsultoria" class="form-control" placeholder="0.00">
                     </div>
-
                     <div class="mb-3">
                         <label>Email</label>
                         <input type="email" id="editEmail" class="form-control">
@@ -217,7 +213,11 @@
                 </div>
                 <div class="modal-body">
                     <p class="fw-bold mb-2">Backup e Restauração</p>
-                        <label class="small text-muted">Arquivo JSON:</label>
+                    <div class="alert alert-info small border-0 bg-opacity-10">
+                        <i class="bi bi-info-circle-fill"></i> Faça backups regulares para garantir a segurança dos dados.
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-muted fw-bold">Restaurar de Arquivo:</label>
                         <input type="file" id="arquivoJson" class="form-control" accept=".json">
                     </div>
                 </div>
@@ -238,23 +238,16 @@
 
         document.getElementById('modalNovoCliente').addEventListener('show.bs.modal', function () {
             document.getElementById('novoDataCriacao').valueAsDate = new Date();
-            // Resetar visualização do campo
             toggleValor('novo');
         });
 
-        // --- LÓGICA DE EXIBIÇÃO DO CAMPO ---
         function toggleValor(prefixo) {
             const status = document.getElementById(prefixo + 'Status').value;
             const divValor = document.getElementById('div' + (prefixo === 'novo' ? 'Novo' : 'Edit') + 'Valor');
-            
-            if (status === 'Cliente') {
-                divValor.classList.remove('d-none');
-            } else {
-                divValor.classList.add('d-none');
-            }
+            if (status === 'Cliente') divValor.classList.remove('d-none');
+            else divValor.classList.add('d-none');
         }
 
-        // --- MONITOR DE BACKUP ---
         function verificarStatusBackup() {
             const ultimoBackup = localStorage.getItem("ancora_ultimo_backup");
             const alerta = document.getElementById("alertaBackup");
@@ -263,11 +256,9 @@
                 alerta.classList.remove("d-none");
                 return;
             }
-
             const dataUltimo = new Date(ultimoBackup);
             const agora = new Date();
             const diasPassados = Math.ceil((agora - dataUltimo) / (1000 * 60 * 60 * 24)); 
-
             if (diasPassados > 7) alerta.classList.remove("d-none");
             else alerta.classList.add("d-none");
         }
@@ -277,7 +268,6 @@
             return dataISO.split('-').reverse().join('/');
         }
 
-        // --- RENDERIZAÇÃO ---
         function aplicarFiltros() {
             let db = getDB();
             
@@ -299,21 +289,15 @@
                     (c.telefone && c.telefone.includes(termo))
                 );
             }
+            if (filtroStatus !== 'todos') db = db.filter(c => (c.status || 'Lead') === filtroStatus);
 
-            if (filtroStatus !== 'todos') {
-                db = db.filter(c => (c.status || 'Lead') === filtroStatus);
-            }
-
-            if(ordem === 'alfabetica') {
-                db.sort((a, b) => a.nome.localeCompare(b.nome));
-            } else if (ordem === 'criacao') {
-                db.sort((a, b) => new Date(b.dataCriacao || 0) - new Date(a.dataCriacao || 0));
-            } else if (ordem === 'diagnostico_futuro') {
+            if(ordem === 'alfabetica') db.sort((a, b) => a.nome.localeCompare(b.nome));
+            else if (ordem === 'criacao') db.sort((a, b) => new Date(b.dataCriacao || 0) - new Date(a.dataCriacao || 0));
+            else if (ordem === 'diagnostico_futuro') {
                 const hoje = new Date().toISOString().split('T')[0];
                 db = db.filter(c => c.dataDiagnostico > hoje);
                 db.sort((a, b) => new Date(a.dataDiagnostico) - new Date(b.dataDiagnostico));
             }
-
             renderizarLinhas(db);
         }
 
@@ -326,15 +310,12 @@
                 msgVazio.classList.remove('d-none');
             } else {
                 msgVazio.classList.add('d-none');
-                
                 lista.forEach((c) => {
                     const isCliente = c.status === 'Cliente';
                     const badgeHtml = isCliente 
                         ? '<span class="badge badge-cliente ms-2">Cliente</span>' 
                         : '<span class="badge badge-lead ms-2">Lead</span>';
                     const corFaixa = isCliente ? '#198754' : '#6c757d';
-                    
-                    // Exibe valor se for cliente e tiver valor
                     const valorHtml = (isCliente && c.valorConsultoria && c.valorConsultoria > 0)
                         ? `<div class="text-success small fw-bold mt-1"><i class="bi bi-cash"></i> ${formatarMoeda(c.valorConsultoria)}</div>`
                         : '';
@@ -357,7 +338,7 @@
                         </td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalEditar('${c.id}')"><i class="bi bi-pencil-fill"></i></button>
-                            <a href="relatorio.html?id=${c.id}" target="_blank" class="btn btn-sm btn-outline-dark me-1"><i class="bi bi-printer-fill"></i></a>
+                            <a href="relatorio.html?id=${c.id}&mode=print" target="_blank" class="btn btn-sm btn-outline-dark me-1"><i class="bi bi-printer-fill"></i></a>
                             <button class="btn btn-sm btn-outline-danger me-1" onclick="excluirCliente('${c.id}')"><i class="bi bi-trash"></i></button>
                             <button class="btn btn-sm btn-primary" onclick="abrirCliente('${c.id}')"><i class="bi bi-arrow-right"></i></button>
                         </td>
@@ -367,10 +348,10 @@
             }
         }
 
-        // --- CRUD ---
         function abrirCliente(id) { navegarPara(`dados_pessoais.html?id=${id}`); }
 
         function salvarNovoCliente() {
+            // PRO: SEM TRAVA DE LIMITES
             const nome = document.getElementById('novoNome').value;
             const dataDiag = document.getElementById('novoDataDiag').value;
             
@@ -387,7 +368,6 @@
                 id: Date.now().toString(),
                 nome: nome,
                 status: status,
-                // Salva valor apenas se for cliente
                 valorConsultoria: status === 'Cliente' ? (parseFloat(valorCons) || 0) : 0,
                 dataDiagnostico: dataDiag,
                 dataCriacao: document.getElementById('novoDataCriacao').value || new Date().toISOString().split('T')[0],
@@ -416,10 +396,7 @@
             document.getElementById('editDataDiag').value = c.dataDiagnostico;
             document.getElementById('editEmail').value = c.email || '';
             document.getElementById('editTel').value = c.telefone || '';
-            
-            // Ajusta visibilidade do campo
             toggleValor('edit');
-            
             modalEdit.show();
         }
 
@@ -456,102 +433,48 @@
             });
         }
         
-  // --- FUNÇÃO DE BACKUP CORRIGIDA (VERSÃO PRO) ---
-function exportarJSON() {
-    try {
-        // 1. Verifica se a chave do banco está acessível (vinda do app.js)
-        if (typeof DB_KEY === 'undefined') {
-            alert("Erro: O arquivo app.js não foi carregado corretamente.");
-            return;
-        }
+        function exportarJSON() {
+            try {
+                if (typeof DB_KEY === 'undefined') { alert("Erro: DB_KEY indefinida."); return; }
+                const dados = localStorage.getItem(DB_KEY);
+                if (!dados) { exibirMensagem("Banco de dados vazio.", "aviso"); return; }
 
-        // 2. Recupera os dados brutos do LocalStorage
-        const dados = localStorage.getItem(DB_KEY);
-        
-        if (!dados) {
-            exibirMensagem("O banco de dados está vazio. Nada para salvar.", "aviso");
-            return;
-        }
-
-        // 3. Cria o arquivo virtual para download (BLOB)
-        const blob = new Blob([dados], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        // 4. Cria um link invisível e força o clique
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `backup_ancora_${new Date().toISOString().split('T')[0]}.json`; // Nome: backup_ancora_2026-01-06.json
-        document.body.appendChild(link);
-        link.click();
-        
-        // 5. Limpeza e Feedback
-        setTimeout(() => {
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        }, 100);
-
-        // 6. Registra que o backup foi feito (para sumir o alerta vermelho)
-        localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
-        
-        // Atualiza a interface se a função existir
-        if (typeof verificarStatusBackup === 'function') {
-            verificarStatusBackup();
-        }
-
-        // Fecha modal se estiver aberto e exibe sucesso
-        if (typeof modalAdmin !== 'undefined') modalAdmin.hide();
-        exibirMensagem("Backup baixado com sucesso!", "sucesso");
-
-    } catch (erro) {
-        console.error("Erro no backup:", erro);
-        alert("Ocorreu um erro ao tentar baixar o backup: " + erro.message);
-    }
-}
-
-        // --- FUNÇÃO DE RESTAURAÇÃO (VERSÃO PRO - SEM SENHA) ---
-function restaurarBackup() {
-    const fileInput = document.getElementById('arquivoJson');
-    
-    // 1. Verifica apenas se o arquivo foi selecionado
-    if(fileInput.files.length === 0) { 
-        exibirMensagem("Selecione um arquivo JSON para restaurar!", "aviso"); 
-        return; 
-    }
-
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            // 2. Lê e valida o JSON
-            const json = JSON.parse(e.target.result);
-            
-            if(!Array.isArray(json)) {
-                throw new Error("O arquivo selecionado não tem o formato correto de banco de dados.");
+                const blob = new Blob([dados], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `backup_ancora_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                
+                setTimeout(() => { document.body.removeChild(link); window.URL.revokeObjectURL(url); }, 100);
+                localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+                if (typeof verificarStatusBackup === 'function') verificarStatusBackup();
+                if (typeof modalAdmin !== 'undefined') modalAdmin.hide();
+                exibirMensagem("Backup baixado com sucesso!", "sucesso");
+            } catch (erro) {
+                alert("Erro no backup: " + erro.message);
             }
-
-            // 3. Salva no navegador (Sobrescreve tudo)
-            saveDB(json);
-            
-            // 4. Atualiza registro de data
-            localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
-            
-            // 5. Fecha modal e recarrega
-            if (typeof modalAdmin !== 'undefined') modalAdmin.hide(); 
-            
-            exibirMensagem(
-                `Backup restaurado com sucesso!<br><strong>${json.length} clientes</strong> recuperados.`, 
-                "sucesso", 
-                () => location.reload() // Recarrega a página para mostrar os dados
-            );
-
-        } catch(err) {
-            console.error(err);
-            exibirMensagem("Erro ao ler o arquivo.<br>Certifique-se de que é um backup válido do Sistema Âncora.", "erro");
         }
-    };
 
-    reader.readAsText(fileInput.files[0]);
-}
+        function restaurarBackup() {
+            const fileInput = document.getElementById('arquivoJson');
+            if(fileInput.files.length === 0) { exibirMensagem("Selecione um arquivo!", "aviso"); return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if(!Array.isArray(json)) throw new Error("Formato inválido");
+                    saveDB(json);
+                    localStorage.setItem("ancora_ultimo_backup", new Date().toISOString());
+                    if (typeof modalAdmin !== 'undefined') modalAdmin.hide(); 
+                    exibirMensagem(`Restaurado! ${json.length} registros.`, "sucesso", () => location.reload());
+                } catch(err) {
+                    exibirMensagem("Erro ao ler arquivo.", "erro");
+                }
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
 
         aplicarFiltros();
         verificarStatusBackup();
