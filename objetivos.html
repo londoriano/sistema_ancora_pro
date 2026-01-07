@@ -148,11 +148,14 @@
         let isDirty = false;
         const modalObj = new bootstrap.Modal(document.getElementById('modalObjetivo'));
 
+        // Configuração de inputs (sem negativos)
+        document.querySelectorAll('input[type="number"]').forEach(i => {
+            i.min = "0"; 
+            i.addEventListener('input', function(){ if(this.value<0) this.value = Math.abs(this.value); });
+        });
+
         function init() {
-            if(!clientId) {
-                exibirMensagem("Erro: Cliente não identificado.", "erro", () => window.location.href = 'clientes.html');
-                return;
-            }
+            if(!clientId) return exibirMensagem("Erro ID", "erro", () => voltarIndex());
             carregarDados();
             construirMenuLateral(clientId);
         }
@@ -160,200 +163,161 @@
         function carregarDados() {
             const db = getDB();
             const client = db.find(c => c.id === clientId);
-            
-            if (!client) {
-                exibirMensagem("Cliente não encontrado!", "erro", () => window.location.href = 'clientes.html');
-                return;
-            }
+            if (!client) return exibirMensagem("Cliente não encontrado", "erro", () => voltarIndex());
 
             document.getElementById('headerNomeCliente').innerText = `Objetivos: ${client.nome}`;
             
-            if (client.objetivosDetalhados) {
-                listaObjetivos = client.objetivosDetalhados;
-            } else if (client.dadosPessoais && client.dadosPessoais.listas && client.dadosPessoais.listas.objetivos) {
+            // --- MIGRAÇÃO AUTOMÁTICA DE DADOS (COM BLINDAGEM NaN) ---
+            if (client.objetivosPlanejados && client.objetivosPlanejados.length > 0) {
+                listaObjetivos = client.objetivosPlanejados.map(o => ({
+                    ...o,
+                    // Garante que sejam números válidos
+                    valorTotal: Math.abs(parseFloat(o.valorTotal) || 0),
+                    valorAtual: Math.abs(parseFloat(o.valorAtual) || 0)
+                }));
+            } 
+            else if (client.objetivosDetalhados && client.objetivosDetalhados.length > 0) {
+                listaObjetivos = client.objetivosDetalhados.map(o => ({
+                    ...o,
+                    valorTotal: Math.abs(parseFloat(o.valorTotal) || 0),
+                    valorAtual: Math.abs(parseFloat(o.valorAtual) || 0)
+                }));
+                marcarComoSujo();
+            }
+            else if (client.dadosPessoais && client.dadosPessoais.listas && client.dadosPessoais.listas.objetivos) {
                 listaObjetivos = client.dadosPessoais.listas.objetivos.map(o => ({
                     titulo: o.col1,
-                    valorTotal: parseFloat(o.valor) || 0,
+                    valorTotal: Math.abs(parseFloat(o.valor) || 0),
                     valorAtual: 0,
                     prazo: o.col3 || 'Médio',
                     prioridade: 'Média',
-                    descricao: '',
+                    descricao: 'Importado do cadastro rápido.',
                     concluido: false
                 }));
+                marcarComoSujo();
             } else {
                 listaObjetivos = [];
             }
             
             renderizarTela();
-            isDirty = false;
-            document.getElementById('alertaNaoSalvo').classList.add('hidden');
+            if(isDirty) document.getElementById('alertaNaoSalvo').classList.remove('hidden');
         }
 
         function renderizarTela() {
             const container = document.getElementById('listaObjetivos');
             container.innerHTML = '';
+            let total = 0, guardado = 0;
             
-            let somaTotal = 0;
-            let somaGuardado = 0;
+            if(!listaObjetivos.length) { container.innerHTML = '<div class="col-12 text-center text-muted py-5">Nenhum objetivo.</div>'; }
+            
+            listaObjetivos.forEach((obj, idx) => {
+                // BLINDAGEM EXTRA NA RENDERIZAÇÃO
+                const vTotal = parseFloat(obj.valorTotal) || 0;
+                const vAtual = parseFloat(obj.valorAtual) || 0;
 
-            if (listaObjetivos.length === 0) {
-                container.innerHTML = '<div class="col-12 text-center text-muted py-5"><i>Nenhum objetivo detalhado cadastrado.</i></div>';
-            } else {
-                listaObjetivos.forEach((obj, index) => {
-                    const isConcluido = obj.concluido === true;
-                    if (!isConcluido) {
-                        somaTotal += parseFloat(obj.valorTotal || 0);
-                        somaGuardado += parseFloat(obj.valorAtual || 0);
-                    }
-
-                    const porcentagem = (obj.valorTotal > 0) ? Math.min(100, (obj.valorAtual / obj.valorTotal) * 100).toFixed(0) : 0;
-                    
-                    let corBarra = 'bg-primary';
-                    if (porcentagem >= 100) corBarra = 'bg-success';
-                    else if (porcentagem < 25) corBarra = 'bg-danger';
-                    else if (porcentagem < 75) corBarra = 'bg-warning';
-
-                    const card = document.createElement('div');
-                    card.className = 'col-md-6 col-lg-4';
-                    card.innerHTML = `
-                        <div class="card shadow-sm h-100 card-objetivo ${isConcluido ? 'bg-concluido' : ''}">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div>
-                                        <h5 class="fw-bold mb-0 text-dark">${obj.titulo}</h5>
-                                        <div class="d-flex gap-2 mt-1">
-                                            <span class="badge bg-light text-dark border">${obj.prazo}</span>
-                                            <span class="badge bg-light text-secondary border">${obj.prioridade}</span>
-                                        </div>
-                                    </div>
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="#" onclick="editarObjetivo(${index})">Editar</a></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="excluirObjetivo(${index})">Excluir</a></li>
-                                        </ul>
-                                    </div>
+                if(!obj.concluido) { total += vTotal; guardado += vAtual; }
+                
+                // Evita divisão por zero resultando em NaN ou Infinity
+                const pct = vTotal > 0 ? Math.min(100, (vAtual / vTotal) * 100).toFixed(0) : 0;
+                
+                const cor = pct >= 100 ? 'success' : (pct < 25 ? 'danger' : (pct < 75 ? 'warning' : 'primary'));
+                
+                container.innerHTML += `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100 card-objetivo ${obj.concluido?'bg-concluido':''}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h5 class="fw-bold mb-0 text-truncate" title="${obj.titulo}">${obj.titulo}</h5>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-light" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="editarObjetivo(${idx})">Editar</a></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="excluirObjetivo(${idx})">Excluir</a></li>
+                                    </ul>
                                 </div>
-                                
-                                <p class="small text-muted mb-3 text-truncate">${obj.descricao || 'Sem descrição.'}</p>
-
-                                <div class="d-flex justify-content-between align-items-end mb-1">
-                                    <small class="text-muted">Progresso (${porcentagem}%)</small>
-                                    <div class="text-end">
-                                        <small class="d-block text-muted" style="font-size: 0.7rem;">Meta</small>
-                                        <span class="fw-bold text-dark">${formatarMoeda(obj.valorTotal)}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="progress progress-height mb-2 bg-secondary bg-opacity-10">
-                                    <div class="progress-bar ${corBarra}" role="progressbar" style="width: ${porcentagem}%"></div>
-                                </div>
-                                
-                                <div class="small text-muted">
-                                    Faltam: <strong>${formatarMoeda(Math.max(0, obj.valorTotal - obj.valorAtual))}</strong>
-                                </div>
-
-                                ${isConcluido ? '<div class="mt-2 text-center text-success fw-bold small"><i class="bi bi-trophy-fill"></i> CONQUISTADO!</div>' : ''}
                             </div>
+                            <div class="d-flex justify-content-between small text-muted mb-2">
+                                <span>${obj.prazo || 'Médio'}</span><span>${obj.prioridade || 'Média'}</span>
+                            </div>
+                            <div class="progress mb-2" style="height:10px;"><div class="progress-bar bg-${cor}" style="width:${pct}%"></div></div>
+                            <div class="d-flex justify-content-between small fw-bold">
+                                <span>${pct}%</span><span>${formatarMoeda(vTotal)}</span>
+                            </div>
+                            <div class="small text-muted mt-1 text-end">Atual: ${formatarMoeda(vAtual)}</div>
                         </div>
-                    `;
-                    container.appendChild(card);
-                });
-            }
-
-            document.getElementById('totalNecessario').innerText = formatarMoeda(somaTotal);
-            document.getElementById('totalGuardado').innerText = formatarMoeda(somaGuardado);
-        }
-
-        function prepararNovo() {
-            document.getElementById('editIndex').value = "-1";
-            document.getElementById('objTitulo').value = "";
-            document.getElementById('objValorTotal').value = "";
-            document.getElementById('objValorAtual').value = "";
-            document.getElementById('objDesc').value = "";
-            document.getElementById('objPrazo').value = "Médio";
-            document.getElementById('objPrioridade').value = "Alta";
-            document.getElementById('objConcluido').checked = false;
-            document.getElementById('modalTitulo').innerText = "Definir Meta";
+                    </div>
+                </div>`;
+            });
+            document.getElementById('totalNecessario').innerText = formatarMoeda(total);
+            document.getElementById('totalGuardado').innerText = formatarMoeda(guardado);
         }
 
         function salvarNovoObjetivo() {
-            const indexVal = document.getElementById('editIndex').value;
-            const index = indexVal === "" ? -1 : parseInt(indexVal);
-
-            // --- VERSÃO PRO: SEM TRAVA DE LIMITES AQUI ---
-            // O código de bloqueio foi removido.
-
             const titulo = document.getElementById('objTitulo').value;
-            const valorTotal = parseFloat(document.getElementById('objValorTotal').value);
+            const total = parseFloat(document.getElementById('objValorTotal').value);
+            
+            if (!titulo || isNaN(total)) return exibirMensagem("Título e Valor são obrigatórios", "aviso");
 
-            if (!titulo || isNaN(valorTotal)) {
-                exibirMensagem("Título e Valor Total são obrigatórios!", "aviso");
-                return;
-            }
-
-            const dados = {
-                titulo: titulo,
-                valorTotal: valorTotal,
-                valorAtual: parseFloat(document.getElementById('objValorAtual').value) || 0,
+            const index = parseInt(document.getElementById('editIndex').value);
+            const novo = {
+                titulo, 
+                valorTotal: Math.abs(total),
+                valorAtual: Math.abs(parseFloat(document.getElementById('objValorAtual').value)||0),
                 prazo: document.getElementById('objPrazo').value,
                 prioridade: document.getElementById('objPrioridade').value,
                 descricao: document.getElementById('objDesc').value,
                 concluido: document.getElementById('objConcluido').checked
             };
 
-            if (index === -1) {
-                listaObjetivos.push(dados);
-            } else {
-                listaObjetivos[index] = dados;
-            }
+            if(index === -1) listaObjetivos.push(novo);
+            else listaObjetivos[index] = novo;
 
             marcarComoSujo();
             renderizarTela();
             modalObj.hide();
         }
 
-        function editarObjetivo(index) {
-            const obj = listaObjetivos[index];
-            document.getElementById('editIndex').value = index;
-            document.getElementById('objTitulo').value = obj.titulo;
-            document.getElementById('objValorTotal').value = obj.valorTotal;
-            document.getElementById('objValorAtual').value = obj.valorAtual;
-            document.getElementById('objDesc').value = obj.descricao;
-            document.getElementById('objPrazo').value = obj.prazo;
-            document.getElementById('objPrioridade').value = obj.prioridade;
-            document.getElementById('objConcluido').checked = obj.concluido || false;
-            
-            document.getElementById('modalTitulo').innerText = "Editar Meta";
-            modalObj.show();
-        }
-
-        function excluirObjetivo(index) {
-            exibirConfirmacao("Excluir este objetivo?", () => {
-                listaObjetivos.splice(index, 1);
-                marcarComoSujo();
-                renderizarTela();
-            });
-        }
-
-        function marcarComoSujo() {
-            isDirty = true;
-            document.getElementById('alertaNaoSalvo').classList.remove('hidden');
-        }
-
         function salvarAlteracoes(silencioso = false) {
             const db = getDB();
             const idx = db.findIndex(c => c.id === clientId);
-            
             if (idx !== -1) {
-                db[idx].objetivosDetalhados = listaObjetivos;
+                db[idx].objetivosPlanejados = listaObjetivos;
+                delete db[idx].objetivosDetalhados; 
                 saveDB(db);
                 isDirty = false;
                 document.getElementById('alertaNaoSalvo').classList.add('hidden');
-                if (!silencioso) exibirMensagem("Objetivos salvos com sucesso!", "sucesso");
+                if (!silencioso) exibirMensagem("Objetivos salvos!", "sucesso");
             }
         }
-
+        
+        function prepararNovo() { 
+            document.getElementById('editIndex').value = -1; 
+            document.getElementById('objTitulo').value = "";
+            document.getElementById('objValorTotal').value = "";
+            document.getElementById('objValorAtual').value = "";
+            document.getElementById('objDesc').value = "";
+            document.getElementById('modalTitulo').innerText = "Novo Objetivo";
+        }
+        
+        function editarObjetivo(i) {
+            const o = listaObjetivos[i];
+            document.getElementById('editIndex').value = i;
+            document.getElementById('objTitulo').value = o.titulo;
+            document.getElementById('objValorTotal').value = o.valorTotal;
+            document.getElementById('objValorAtual').value = o.valorAtual;
+            document.getElementById('objPrazo').value = o.prazo;
+            document.getElementById('objPrioridade').value = o.prioridade;
+            document.getElementById('objDesc').value = o.descricao;
+            document.getElementById('objConcluido').checked = o.concluido;
+            document.getElementById('modalTitulo').innerText = "Editar";
+            modalObj.show();
+        }
+        
+        function excluirObjetivo(i) { 
+            exibirConfirmacao("Excluir?", () => { listaObjetivos.splice(i,1); marcarComoSujo(); renderizarTela(); }); 
+        }
+        
+        function marcarComoSujo() { isDirty = true; document.getElementById('alertaNaoSalvo').classList.remove('hidden'); }
         function voltarIndex() { navegarPara('clientes.html'); }
 
         init();

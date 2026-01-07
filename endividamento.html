@@ -183,7 +183,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary px-4" onclick="salvarDividaMemoria()">Salvar</button>
+                    <button type="button" class="btn btn-primary px-4" onclick="salvarNovaDivida()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -242,6 +242,12 @@
         const modalDiv = new bootstrap.Modal(document.getElementById('modalDivida'));
         const modalTable = new bootstrap.Modal(document.getElementById('modalTabelaPrioridade'));
 
+        // BLOQUEIO DE NEGATIVOS (GLOBAL NESTA PÁGINA)
+        document.querySelectorAll('input[type="number"]').forEach(i => {
+            i.min = "0"; 
+            i.addEventListener('input', function(){ if(this.value < 0) this.value = Math.abs(this.value); });
+        });
+
         function init() {
             if(!clientId) {
                 exibirMensagem("Erro: Nenhum cliente selecionado.", "erro", () => window.location.href = 'clientes.html');
@@ -281,19 +287,12 @@
                 return;
             }
 
-            // Clona array para não bagunçar a ordem original
             let listaDisplay = [...listaDividas];
 
-            // --- LÓGICA DE ORDENAÇÃO ---
             if (ordenacao === 'prioridade') {
                 listaDisplay.sort((a, b) => (parseInt(a.prioridade) || 99) - (parseInt(b.prioridade) || 99));
             } else if (ordenacao === 'oferta') {
-                // Ordena quem tem oferta (menor para maior), depois quem não tem
-                listaDisplay.sort((a, b) => {
-                    const ofA = parseFloat(a.oferta) || 999999999;
-                    const ofB = parseFloat(b.oferta) || 999999999;
-                    return ofA - ofB;
-                });
+                listaDisplay.sort((a, b) => (parseFloat(a.oferta) || 999999999) - (parseFloat(b.oferta) || 999999999));
             } else if (ordenacao === 'antiga') {
                 listaDisplay.sort((a, b) => new Date(a.data || '9999-12-31') - new Date(b.data || '9999-12-31'));
             }
@@ -307,9 +306,8 @@
                     totalOfertas += parseFloat(d.oferta || 0);
                 }
 
-                // Badge Prioridade
                 const prio = d.prioridade || 7;
-                const badgePrio = `<span class="badge badge-prio-${prio} ms-2" title="Prioridade ${prio}">P${prio}</span>`;
+                const badgePrio = `<span class="badge badge-prio-${prio} ms-2">P${prio}</span>`;
 
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4';
@@ -334,29 +332,12 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="d-flex justify-content-between text-muted small mb-3">
-                                <span><i class="bi bi-calendar"></i> ${d.data ? d.data.split('-').reverse().join('/') : '-'}</span>
-                                <span><i class="bi bi-graph-up-arrow"></i> ${d.juros || 0}% a.m.</span>
-                            </div>
-
                             <div class="bg-white p-2 rounded border mb-2">
-                                <div class="d-flex justify-content-between small">
-                                    <span>Original:</span>
-                                    <span>${formatarMoeda(d.valorOriginal)}</span>
-                                </div>
                                 <div class="d-flex justify-content-between fw-bold text-dark fs-5">
                                     <span>Atual:</span>
                                     <span class="${isPaga ? 'text-success' : 'text-danger'}">${formatarMoeda(d.valorAtual)}</span>
                                 </div>
                             </div>
-
-                            ${d.oferta && parseFloat(d.oferta) > 0 ? `
-                                <div class="alert alert-success py-1 px-2 mb-0 small d-flex justify-content-between align-items-center">
-                                    <span><i class="bi bi-check-circle-fill"></i> Proposta:</span>
-                                    <strong>${formatarMoeda(d.oferta)}</strong>
-                                </div>
-                            ` : '<div class="text-muted small text-center fst-italic mt-2">Sem proposta de acordo</div>'}
                         </div>
                     </div>
                 `;
@@ -367,31 +348,27 @@
             document.getElementById('totalOfertasGlobal').innerText = formatarMoeda(totalOfertas);
         }
 
-        function abrirTabelaReferencia() {
-            modalTable.show();
-        }
+        function abrirTabelaReferencia() { modalTable.show(); }
 
         function prepararNovaDivida() {
             document.getElementById('editIndex').value = "-1"; 
             document.getElementById('divDesc').value = "";
-            document.getElementById('divTipo').value = "Outros";
             document.getElementById('divValorOriginal').value = "";
             document.getElementById('divValorAtual').value = "";
-            document.getElementById('divPrioridade').value = "7";
-            document.getElementById('divData').value = "";
             document.getElementById('divJuros').value = "";
+            document.getElementById('divData').value = "";
             document.getElementById('divOferta').value = "";
+            document.getElementById('divPrioridade').value = "7";
             document.getElementById('modalTitulo').innerText = "Nova Dívida";
         }
 
-        function salvarDividaMemoria() {
+        function salvarNovaDivida() {
             const indexVal = document.getElementById('editIndex').value;
             const index = indexVal === "" ? -1 : parseInt(indexVal);
-            
             const desc = document.getElementById('divDesc').value;
-            const valorAtual = document.getElementById('divValorAtual').value;
+            const valorAtual = parseFloat(document.getElementById('divValorAtual').value);
 
-            if (!desc || !valorAtual) {
+            if (!desc || isNaN(valorAtual)) {
                 exibirMensagem("Preencha a Descrição e o Valor Atual.", "aviso");
                 return;
             }
@@ -399,12 +376,12 @@
             const dados = {
                 descricao: desc,
                 tipo: document.getElementById('divTipo').value,
-                valorOriginal: document.getElementById('divValorOriginal').value,
-                valorAtual: valorAtual,
+                valorOriginal: Math.abs(parseFloat(document.getElementById('divValorOriginal').value)||0),
+                valorAtual: Math.abs(valorAtual),
                 prioridade: document.getElementById('divPrioridade').value || 7,
                 data: document.getElementById('divData').value,
-                juros: document.getElementById('divJuros').value,
-                oferta: document.getElementById('divOferta').value,
+                juros: Math.abs(parseFloat(document.getElementById('divJuros').value)||0),
+                oferta: Math.abs(parseFloat(document.getElementById('divOferta').value)||0),
                 status: (index !== -1 && listaDividas[index]) ? listaDividas[index].status : 'aberta'
             };
 
@@ -423,14 +400,13 @@
             const d = listaDividas[index];
             document.getElementById('editIndex').value = index;
             document.getElementById('divDesc').value = d.descricao;
-            document.getElementById('divTipo').value = d.tipo || 'Outros';
+            document.getElementById('divTipo').value = d.tipo;
             document.getElementById('divValorOriginal').value = d.valorOriginal;
             document.getElementById('divValorAtual').value = d.valorAtual;
-            document.getElementById('divPrioridade').value = d.prioridade || 7;
-            document.getElementById('divData').value = d.data;
             document.getElementById('divJuros').value = d.juros;
+            document.getElementById('divData').value = d.data;
             document.getElementById('divOferta').value = d.oferta;
-            
+            document.getElementById('divPrioridade').value = d.prioridade || 7;
             document.getElementById('modalTitulo').innerText = "Editar Dívida";
             modalDiv.show();
         }

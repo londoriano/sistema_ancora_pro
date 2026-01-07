@@ -139,11 +139,11 @@
                             <input type="number" id="novoValorConsultoria" class="form-control" placeholder="0.00">
                         </div>
                         <div class="mb-3">
-                            <label>Email</label>
-                            <input type="email" id="novoEmail" class="form-control">
+                            <label>Email *</label>
+                            <input type="email" id="novoEmail" class="form-control" placeholder="cliente@email.com">
                         </div>
                         <div class="mb-3">
-                            <label>Celular</label>
+                            <label>Celular *</label>
                             <input type="text" id="novoTel" class="form-control" onkeyup="mascaraTelefone(this)" placeholder="(DD) 9..." maxlength="15">
                         </div>
                         <input type="hidden" id="novoDataCriacao">
@@ -222,8 +222,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="exportarJSON()">Baixar Backup</button>
-                    <button type="button" class="btn btn-danger" onclick="restaurarBackup()">Restaurar</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="exportarJSON()"><i class="bi bi-download"></i> Baixar Backup</button>
+                    <button type="button" class="btn btn-danger" onclick="restaurarBackup()"><i class="bi bi-upload"></i> Restaurar</button>
                 </div>
             </div>
         </div>
@@ -354,10 +354,26 @@
             // PRO: SEM TRAVA DE LIMITES
             const nome = document.getElementById('novoNome').value;
             const dataDiag = document.getElementById('novoDataDiag').value;
+            const email = document.getElementById('novoEmail').value;
+            const tel = document.getElementById('novoTel').value;
             
             if(!nome || !dataDiag) { 
                 exibirMensagem("Nome e Data do Diagnóstico são obrigatórios!", "erro"); 
                 return; 
+            }
+
+            // Validação de E-mail
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email || !emailRegex.test(email)) {
+                exibirMensagem("Por favor, insira um e-mail válido.", "aviso");
+                return;
+            }
+
+            // Validação de Telefone (Mínimo 10 dígitos)
+            const telLimpo = tel.replace(/\D/g, '');
+            if (telLimpo.length < 10) {
+                exibirMensagem("Por favor, insira um número de celular válido com DDD.", "aviso");
+                return;
             }
 
             const db = getDB();
@@ -371,9 +387,10 @@
                 valorConsultoria: status === 'Cliente' ? (parseFloat(valorCons) || 0) : 0,
                 dataDiagnostico: dataDiag,
                 dataCriacao: document.getElementById('novoDataCriacao').value || new Date().toISOString().split('T')[0],
-                email: document.getElementById('novoEmail').value,
-                telefone: document.getElementById('novoTel').value,
-                dadosPessoais: {} 
+                email: email,
+                telefone: tel,
+                dadosPessoais: {},
+                objetivosPlanejados: [] 
             };
             
             db.push(novo);

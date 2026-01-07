@@ -310,183 +310,161 @@
 
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const clientId = params.get('id');
-        let currentClient = null;
-        let isDirty = false;
-        let listasDados = { objetivos: [], dividas: [], investimentos: [], gastosFixos: [], gastosVariaveis: [] };
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="app.js"></script>
+<script>
+    const params = new URLSearchParams(window.location.search);
+    const clientId = params.get('id');
+    let currentClient = null;
+    let isDirty = false;
+    let listasDados = { objetivos: [], dividas: [], investimentos: [], gastosFixos: [], gastosVariaveis: [] };
 
-        function carregarDados() {
-            const db = getDB();
-            currentClient = db.find(c => c.id === clientId);
-
-            if (!currentClient) {
-                exibirMensagem("Cliente não encontrado!", "erro", () => window.location.href = 'clientes.html');
-                return;
-            }
-
-            document.getElementById('headerNomeCliente').innerText = "Perfil: " + currentClient.nome;
-
-            document.getElementById('readNome').innerText = currentClient.nome;
-            document.getElementById('readData').innerText = "Desde: " + (currentClient.dataDiagnostico ? currentClient.dataDiagnostico.split('-').reverse().join('/') : '-');
-            document.getElementById('readEmail').innerText = currentClient.email || '-';
-            document.getElementById('readTel').innerText = currentClient.telefone || '-';
-            
-            const dados = currentClient.dadosPessoais || {};
-            
-            document.getElementById('readProfissao').innerText = dados.profissao || '-';
-            document.getElementById('readCivil').innerText = dados.estadoCivil || '-';
-            document.getElementById('readFilhos').innerText = (dados.temFilhos === 'Sim' ? 'Com Filhos' : 'Sem Filhos');
-            document.getElementById('readRenda').innerText = formatarMoeda(dados.rendaMensal);
-            
-            if(dados.observacoesGerais && dados.observacoesGerais.trim() !== "") {
-                document.getElementById('readObs').innerText = dados.observacoesGerais;
-            }
-
-            if(dados.listas) listasDados = dados.listas;
-            atualizarListasLeitura();
-
-            const form = document.getElementById('formDados');
-            Array.from(form.elements).forEach(field => {
-                if (field.name && dados[field.name]) {
-                    field.value = dados[field.name];
-                }
-            });
-
-            renderizarTodasListasEdicao();
-            construirMenuLateral(clientId);
-
-            isDirty = false;
-            document.getElementById('alertaNaoSalvo').classList.add('hidden');
-        }
-
-        function atualizarListasLeitura() {
-            gerarHtmlListaLeitura('objetivos', 'viewListObjetivos');
-            gerarHtmlListaLeitura('gastosFixos', 'viewListFixos');
-            gerarHtmlListaLeitura('gastosVariaveis', 'viewListVariaveis');
-            gerarHtmlListaLeitura('investimentos', 'viewListInvestimentos');
-            gerarHtmlListaLeitura('dividas', 'viewListDividas');
-        }
-
-        function gerarHtmlListaLeitura(tipo, elementId) {
-            const container = document.getElementById(elementId);
-            const lista = listasDados[tipo] || [];
-            
-            if(lista.length === 0) {
-                container.innerHTML = '<span class="text-muted small fst-italic">Vazio</span>';
-                return;
-            }
-            let html = '';
-            lista.forEach(item => {
-                const nome = item.col1 || 'Item';
-                const valor = formatarMoeda(item.valor || 0);
-                html += `<div class="list-read-item"><span>${nome}</span><strong>${valor}</strong></div>`;
-            });
-            container.innerHTML = html;
-        }
-
-        function toggleEdicao() {
-            const section = document.getElementById('sectionEditor');
-            if(section.classList.contains('d-none')) {
-                section.classList.remove('d-none');
-                section.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                section.classList.add('d-none');
-            }
-        }
-
-        // --- FUNÇÃO SEM LIMITES (PRO) ---
-        function addNaLista(tipo) {
-            let item = {};
-            if(tipo === 'objetivos') {
-                item = { col1: document.getElementById('objTitulo').value, valor: document.getElementById('objValor').value, col3: document.getElementById('objPrazo').value };
-                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Objetivo e Valor', 'aviso'); return; }
-                document.getElementById('objTitulo').value = ''; document.getElementById('objValor').value = ''; document.getElementById('objPrazo').value = '';
-            } 
-            else if(tipo === 'dividas') {
-                item = { col1: document.getElementById('divTitulo').value, valor: document.getElementById('divValor').value };
-                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Descrição e Valor', 'aviso'); return; }
-                document.getElementById('divTitulo').value = ''; document.getElementById('divValor').value = '';
-            } 
-            else if(tipo === 'investimentos') {
-                item = { col1: document.getElementById('invOnde').value, valor: document.getElementById('invValor').value };
-                if(!item.col1 || !item.valor) { exibirMensagem('Preencha Onde e Valor', 'aviso'); return; }
-                document.getElementById('invOnde').value = ''; document.getElementById('invValor').value = '';
-            } 
-            else if(tipo.startsWith('gastos')) {
-                const sufixo = tipo === 'gastosFixos' ? 'Fixo' : 'Var';
-                item = { col1: document.getElementById(`gasto${sufixo}Nome`).value, valor: document.getElementById(`gasto${sufixo}Valor`).value };
-                if(!item.col1 || !item.valor) return; 
-                document.getElementById(`gasto${sufixo}Nome`).value = ''; document.getElementById(`gasto${sufixo}Valor`).value = '';
-            }
-
-            if(!listasDados[tipo]) listasDados[tipo] = [];
-            listasDados[tipo].push(item);
-            marcarComoSujo();
-            renderizarListaEdicao(tipo);
-        }
-
-        function removerItem(tipo, index) {
-            listasDados[tipo].splice(index, 1);
-            marcarComoSujo();
-            renderizarListaEdicao(tipo);
-        }
-
-        function renderizarTodasListasEdicao() {
-            ['objetivos', 'dividas', 'investimentos', 'gastosFixos', 'gastosVariaveis'].forEach(tipo => renderizarListaEdicao(tipo));
-        }
-
-        function renderizarListaEdicao(tipo) {
-            const tbody = document.getElementById(`lista-${tipo}`);
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            (listasDados[tipo] || []).forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item.col1}</td>
-                    <td class="text-end">${formatarMoeda(item.valor)}</td>
-                    <td style="width:30px"><i class="bi bi-x text-danger" style="cursor:pointer" onclick="removerItem('${tipo}', ${index})"></i></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function marcarComoSujo() {
-            isDirty = true;
-            document.getElementById('alertaNaoSalvo').classList.remove('hidden');
-        }
-
-        function salvarAlteracoes(silencioso = false) {
-            const form = document.getElementById('formDados');
-            const db = getDB();
-            const index = db.findIndex(c => c.id === clientId);
-            if (index === -1) return;
-
-            const novosDados = {};
-            Array.from(form.elements).forEach(field => {
-                if(field.name) novosDados[field.name] = field.value;
-            });
-            novosDados.listas = listasDados;
-
-            db[index].dadosPessoais = novosDados;
-            saveDB(db);
-
-            isDirty = false;
-            document.getElementById('alertaNaoSalvo').classList.add('hidden');
-            
-            if (!silencioso) {
-                exibirMensagem("Perfil do cliente atualizado com sucesso!", "sucesso", () => {
-                    location.reload(); 
+    // --- CONFIGURAÇÃO GLOBAL DE INPUTS (ENTER + SEM NEGATIVOS) ---
+    function configurarInputsGlobais() {
+        document.querySelectorAll('input').forEach(input => {
+            // Enter em input text/number clica no botão vizinho
+            if(input.parentElement.classList.contains('input-group')) {
+                input.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const btn = this.parentElement.querySelector('button');
+                        if(btn) btn.click();
+                    }
                 });
             }
+            // Bloqueio de negativos
+            if(input.type === 'number') {
+                input.min = "0";
+                input.addEventListener('input', function() {
+                    if(this.value < 0) this.value = Math.abs(this.value);
+                });
+            }
+        });
+    }
+
+    function carregarDados() {
+        const db = getDB();
+        currentClient = db.find(c => c.id === clientId);
+        if (!currentClient) return exibirMensagem("Cliente não encontrado!", "erro", () => navegarPara('clientes.html'));
+
+        document.getElementById('headerNomeCliente').innerText = "Perfil: " + currentClient.nome;
+        
+        // Dados de leitura
+        const d = currentClient.dadosPessoais || {};
+        document.getElementById('readNome').innerText = currentClient.nome;
+        document.getElementById('readEmail').innerText = currentClient.email || '-';
+        document.getElementById('readTel').innerText = currentClient.telefone || '-';
+        document.getElementById('readProfissao').innerText = d.profissao || '-';
+        document.getElementById('readCivil').innerText = d.estadoCivil || '-';
+        document.getElementById('readRenda').innerText = formatarMoeda(d.rendaMensal);
+        document.getElementById('readObs').innerText = d.observacoesGerais || "Sem observações.";
+
+        if(d.listas) listasDados = d.listas;
+        atualizarListasLeitura();
+
+        const form = document.getElementById('formDados');
+        Array.from(form.elements).forEach(f => {
+            if(f.name && d[f.name]) f.value = d[f.name];
+        });
+
+        renderizarTodasListasEdicao();
+        construirMenuLateral(clientId);
+        
+        // Aplica a configuração nos inputs recém carregados
+        configurarInputsGlobais();
+        
+        isDirty = false;
+        document.getElementById('alertaNaoSalvo').classList.add('hidden');
+    }
+
+    function addNaLista(tipo) {
+        let item = {};
+        if(tipo === 'objetivos') {
+            const t = document.getElementById('objTitulo');
+            const v = document.getElementById('objValor');
+            const p = document.getElementById('objPrazo');
+            if(!t.value || !v.value) return exibirMensagem('Preencha Objetivo e Valor', 'aviso');
+            item = { col1: t.value, valor: Math.abs(v.value), col3: p.value };
+            t.value = ''; v.value = ''; p.value = ''; t.focus();
+        } 
+        else if(tipo === 'dividas' || tipo === 'investimentos') {
+            const idT = tipo === 'dividas' ? 'divTitulo' : 'invOnde';
+            const idV = tipo === 'dividas' ? 'divValor' : 'invValor';
+            const t = document.getElementById(idT);
+            const v = document.getElementById(idV);
+            if(!t.value || !v.value) return exibirMensagem('Preencha descrição e valor', 'aviso');
+            item = { col1: t.value, valor: Math.abs(v.value) };
+            t.value = ''; v.value = ''; t.focus();
+        } 
+        else if(tipo.startsWith('gastos')) {
+            const suf = tipo === 'gastosFixos' ? 'Fixo' : 'Var';
+            const t = document.getElementById(`gasto${suf}Nome`);
+            const v = document.getElementById(`gasto${suf}Valor`);
+            if(!t.value || !v.value) return; // Silencioso se vazio
+            item = { col1: t.value, valor: Math.abs(v.value) };
+            t.value = ''; v.value = ''; t.focus();
         }
 
-        function voltarIndex() { navegarPara('clientes.html'); }
+        if(!listasDados[tipo]) listasDados[tipo] = [];
+        listasDados[tipo].push(item);
+        marcarComoSujo();
+        renderizarListaEdicao(tipo);
+    }
 
-        carregarDados();
-    </script>
+    function removerItem(tipo, index) {
+        listasDados[tipo].splice(index, 1);
+        marcarComoSujo();
+        renderizarListaEdicao(tipo);
+    }
+
+    function renderizarTodasListasEdicao() {
+        ['objetivos', 'dividas', 'investimentos', 'gastosFixos', 'gastosVariaveis'].forEach(tipo => renderizarListaEdicao(tipo));
+    }
+
+    function renderizarListaEdicao(tipo) {
+        const tbody = document.getElementById(`lista-${tipo}`);
+        tbody.innerHTML = '';
+        (listasDados[tipo] || []).forEach((item, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.col1}</td>
+                    <td class="text-end">${formatarMoeda(item.valor)}</td>
+                    <td style="width:30px"><i class="bi bi-x text-danger cursor-pointer" onclick="removerItem('${tipo}', ${index})"></i></td>
+                </tr>`;
+        });
+    }
+
+    function marcarComoSujo() { isDirty = true; document.getElementById('alertaNaoSalvo').classList.remove('hidden'); }
+
+    function salvarAlteracoes(silencioso = false) {
+        const form = document.getElementById('formDados');
+        const db = getDB();
+        const idx = db.findIndex(c => c.id === clientId);
+        if (idx === -1) return;
+
+        const novos = {};
+        Array.from(form.elements).forEach(f => { if(f.name) novos[f.name] = f.value; });
+        novos.listas = listasDados;
+        db[idx].dadosPessoais = novos;
+        saveDB(db);
+
+        isDirty = false;
+        document.getElementById('alertaNaoSalvo').classList.add('hidden');
+        if (!silencioso) exibirMensagem("Dados atualizados!", "sucesso", () => location.reload());
+    }
+
+    function voltarIndex() { navegarPara('clientes.html'); }
+    
+    function atualizarListasLeitura() {
+        ['objetivos', 'gastosFixos', 'gastosVariaveis', 'investimentos', 'dividas'].forEach(t => {
+            const div = document.getElementById(t === 'objetivos' ? 'viewListObjetivos' : (t === 'gastosFixos' ? 'viewListFixos' : (t === 'gastosVariaveis' ? 'viewListVariaveis' : (t === 'investimentos' ? 'viewListInvestimentos' : 'viewListDividas'))));
+            const l = listasDados[t] || [];
+            div.innerHTML = l.length ? l.map(i => `<div class="list-read-item"><span>${i.col1}</span><strong>${formatarMoeda(i.valor)}</strong></div>`).join('') : '<span class="text-muted small fst-italic">Vazio</span>';
+        });
+    }
+    function toggleEdicao() { const s = document.getElementById('sectionEditor'); s.classList.toggle('d-none'); if(!s.classList.contains('d-none')) s.scrollIntoView({behavior:'smooth'}); }
+
+    carregarDados();
+</script>
 </body>
 </html>

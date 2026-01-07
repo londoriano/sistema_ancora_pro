@@ -107,7 +107,7 @@
             atualizarGrafico();
         }
 
-        // --- IMPORTAÇÃO DE JSON (LÓGICA PRO) ---
+        // --- IMPORTAÇÃO DE JSON (LÓGICA PRO - RESTAURADA) ---
         function processarImportacao(input) {
             const file = input.files[0];
             if(!file) return;
@@ -120,24 +120,21 @@
 
                     let count = 0;
                     transacoes.forEach(t => {
-                        // Validação básica
                         if(!t.data || !t.valor || !t.tipo) return;
                         
-                        // Extrai YYYY-MM
-                        const mesKey = t.data.substring(0, 7); 
+                        const mesKey = t.data.substring(0, 7); // YYYY-MM
                         
-                        // Cria mês se não existir
                         if(!fluxoCaixa[mesKey]) {
                             fluxoCaixa[mesKey] = { receitas: [], fixos: [], variaveis: [] };
                         }
 
-                        // Mapeia tipos (segurança caso o JSON venha com caixa alta/baixa)
                         let categoria = t.tipo.toLowerCase();
                         if(!['receitas', 'fixos', 'variaveis'].includes(categoria)) return;
 
+                        // Adiciona garantindo valor positivo
                         fluxoCaixa[mesKey][categoria].push({
                             desc: t.descricao || "Importado",
-                            valor: parseFloat(t.valor)
+                            valor: Math.abs(parseFloat(t.valor))
                         });
                         count++;
                     });
@@ -157,7 +154,7 @@
                 }
             };
             reader.readAsText(file);
-            input.value = ""; // Limpa input
+            input.value = ""; 
         }
         // ----------------------------------------
 
@@ -173,6 +170,42 @@
             }
             renderizarMeses();
             atualizarGrafico();
+        }
+
+        // --- CONFIGURAÇÃO DINÂMICA DE INPUTS ---
+        function configurarInputDinamico(idVal, idDesc, callback) {
+            const val = document.getElementById(idVal);
+            const desc = document.getElementById(idDesc);
+            if(!val || !desc) return;
+
+            // Enter no valor dispara
+            val.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); callback(); }
+            });
+            // Enter na descrição pula pro valor
+            desc.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); val.focus(); }
+            });
+            
+            // Bloqueio negativo
+            val.min = "0";
+            val.addEventListener('input', function() {
+                if(this.value < 0) this.value = Math.abs(this.value);
+            });
+        }
+
+        function gerarInput(mesKey, tipo, placeholder) {
+            const idD = `desc-${mesKey}-${tipo}`;
+            const idV = `val-${mesKey}-${tipo}`;
+            setTimeout(() => configurarInputDinamico(idV, idD, () => addLancamento(mesKey, tipo)), 50);
+
+            return `
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" id="${idD}" class="form-control" placeholder="${placeholder}">
+                    <input type="number" id="${idV}" class="form-control" placeholder="R$" style="max-width: 80px;">
+                    <button class="btn btn-secondary" onclick="addLancamento('${mesKey}', '${tipo}')">+</button>
+                </div>
+            `;
         }
 
         function renderizarMeses() {
@@ -200,7 +233,7 @@
                 const corSaldo = saldo >= 0 ? 'text-success' : 'text-danger';
 
                 const card = document.createElement('div');
-                card.className = 'card shadow-sm border-0';
+                card.className = 'card shadow-sm border-0 mb-3';
                 card.innerHTML = `
                     <div class="card-header bg-white py-3">
                         <div class="d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapse-${mesKey}" style="cursor:pointer">
@@ -242,16 +275,6 @@
             });
         }
 
-        function gerarInput(mesKey, tipo, placeholder) {
-            return `
-                <div class="input-group input-group-sm mb-2">
-                    <input type="text" id="desc-${mesKey}-${tipo}" class="form-control" placeholder="${placeholder}">
-                    <input type="number" id="val-${mesKey}-${tipo}" class="form-control" placeholder="R$" style="max-width: 80px;">
-                    <button class="btn btn-secondary" onclick="addLancamento('${mesKey}', '${tipo}')">+</button>
-                </div>
-            `;
-        }
-
         function gerarTabela(mesKey, tipo, lista) {
             if(!lista || lista.length === 0) return '<div class="text-muted small text-center fst-italic">Vazio</div>';
             
@@ -272,13 +295,19 @@
         function somar(lista) { return lista.reduce((acc, item) => acc + (parseFloat(item.valor) || 0), 0); }
 
         function addLancamento(mesKey, tipo) {
-            const desc = document.getElementById(`desc-${mesKey}-${tipo}`).value;
-            const valor = document.getElementById(`val-${mesKey}-${tipo}`).value;
-            if(!desc || !valor) return;
-            fluxoCaixa[mesKey][tipo].push({ desc, valor });
+            const descEl = document.getElementById(`desc-${mesKey}-${tipo}`);
+            const valEl = document.getElementById(`val-${mesKey}-${tipo}`);
+            const desc = descEl.value;
+            const valor = parseFloat(valEl.value);
+            
+            if(!desc || isNaN(valor)) return;
+            
+            fluxoCaixa[mesKey][tipo].push({ desc, valor: Math.abs(valor) });
             marcarComoSujo();
             renderizarMeses(); 
             atualizarGrafico();
+            
+            setTimeout(() => document.getElementById(`desc-${mesKey}-${tipo}`).focus(), 50);
         }
 
         function removerLancamento(mesKey, tipo, index) {
