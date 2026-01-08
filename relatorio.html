@@ -65,6 +65,13 @@
             .text-white { color: #000 !important; }
             .badge { border: 1px solid #000; color: #000; background: none; }
             a { text-decoration: none; color: #000; }
+
+            /* ADICIONE ISTO PARA FORÇAR A COR DAS BARRAS */
+            .progress div {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                border: 1px solid #000; /* Borda de segurança caso a cor falhe */
+            }
         }
     </style>
 </head>
@@ -344,7 +351,8 @@
             // 3. FLUXO
             const fluxo = c.fluxoCaixa || {};
             const tabFluxo = document.getElementById('tabFluxo');
-            const meses = Object.keys(fluxo).sort().reverse();
+            // Pega apenas os 12 meses mais recentes para o relatório impresso
+            const meses = Object.keys(fluxo).sort().reverse().slice(0, 12);
             if(meses.length === 0) tabFluxo.innerHTML = '<tr><td colspan="4" class="text-center fst-italic">Vazio</td></tr>';
             else {
                 meses.forEach(mKey => {
@@ -450,7 +458,14 @@
                 const tm = (Math.pow(1+(apoRen/100), 1/12))-1;
                 for(let k=1; k<=apoPra*12; k++) {
                     saldo = saldo*(1+tm) + apoMen;
-                    if(k%12===0) saldo+=apoExt;
+                    
+                    // BLINDAGEM MATEMÁTICA (IGUAL AO SIMULADOR)
+                    saldo = Math.round(saldo * 100) / 100; 
+
+                    if(k%12===0) {
+                        saldo+=apoExt;
+                        saldo = Math.round(saldo * 100) / 100;
+                    }
                 }
                 const imposto = saldo * (apoIR / 100);
                 const saldoLiquido = saldo - imposto;
@@ -476,29 +491,33 @@
             document.getElementById('totalVar').innerText = formatarMoeda(vari);
             document.getElementById('totalInvest').innerText = formatarMoeda(fix+vari);
 
-            // 9. OBJETIVOS
+          // 9. OBJETIVOS
             const objs = c.objetivosPlanejados || [];
             const objCont = document.getElementById('containerObjetivos');
+            
             if(objs.length===0) objCont.innerHTML = '<div class="col-12 text-muted fst-italic">Vazio</div>';
             else {
                 objs.forEach(o => {
+                    // CORREÇÃO 1: Usar 'o.titulo' em vez de 'o.nome'
+                    // CORREÇÃO 2: Tratar o 'aporte' que não existe no cadastro original
+                    
                     const custo = parseFloat(o.valorTotal || 0);
-                    const aporte = parseFloat(o.aporte || 0);
-                    let estimativaReal = "Indefinido";
-                    if(aporte > 0) {
-                        const meses = Math.ceil(custo / aporte);
-                        estimativaReal = `${meses} meses (~${(meses/12).toFixed(1)} anos)`;
-                    }
-
+                    const jaTenho = parseFloat(o.valorAtual || 0);
+                    const falta = Math.max(0, custo - jaTenho);
+                    
+                    // Como não temos o campo 'aporte' no cadastro, não podemos calcular o prazo real.
+                    // Vamos mostrar o quanto falta financeiramente.
+                    
                     objCont.innerHTML += `
                     <div class="col-4">
                         <div class="card-print">
-                            <div class="fw-bold text-primary">${o.nome}</div>
-                            <div class="small mt-2">
-                                <div>Custo: <strong>${formatarMoeda(o.valorTotal)}</strong></div>
-                                <div>Aporte: ${formatarMoeda(o.aporte)}</div>
-                                <div>Prazo Desejado: ${o.prazo}</div>
-                                <div class="mt-1 pt-1 border-top text-dark fw-bold">Realidade: ${estimativaReal}</div>
+                            <div class="fw-bold text-primary">${o.titulo}</div> <div class="small mt-2">
+                                <div>Custo Total: <strong>${formatarMoeda(custo)}</strong></div>
+                                <div>Já Possui: ${formatarMoeda(jaTenho)}</div>
+                                <div class="text-danger">Falta: ${formatarMoeda(falta)}</div>
+                                <div class="mt-2 pt-2 border-top text-muted">
+                                    Prazo Desejado: ${o.prazo || 'Não definido'}
+                                </div>
                             </div>
                         </div>
                     </div>`;
