@@ -154,6 +154,13 @@
         let chartInstance = null;
         const modalInv = new bootstrap.Modal(document.getElementById('modalInvestimento'));
 
+        // --- ADICIONE ISTO AQUI EMBAIXO ---
+        const elModalInv = document.getElementById('modalInvestimento');
+        elModalInv.addEventListener('shown.bs.modal', () => {
+            document.getElementById('invNome').focus();
+        });
+        // ----------------------------------
+
       function init() {
     if(!clientId) {
         exibirMensagem("Erro: Cliente não identificado.", "erro", () => window.location.href = 'clientes.html');

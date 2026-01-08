@@ -259,6 +259,18 @@ function construirMenuLateral(clientId) {
     container.innerHTML = html;
 }
 
+function configurarEnter(idInput, idBotao) {
+    const input = document.getElementById(idInput);
+    if(input) {
+        input.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                document.getElementById(idBotao).click();
+            }
+        });
+    }
+}
+
 // --- 5. INICIALIZAÇÃO GERAL ---
 window.onload = async function() {
     try { 

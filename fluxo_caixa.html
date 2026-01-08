@@ -124,7 +124,14 @@
                     transacoes.forEach(t => {
                         if(!t.data || !t.valor || !t.tipo) return;
                         
-                        const mesKey = t.data.substring(0, 7); // YYYY-MM
+                       // Mude para:
+                        const dataObj = new Date(t.data);
+                        if(isNaN(dataObj)) return; // Pula se a data for inválida
+
+                        // Garante formato YYYY-MM independente de como veio no JSON
+                        const ano = dataObj.getFullYear();
+                        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                        const mesKey = `${ano}-${mes}`;
                         
                         if(!fluxoCaixa[mesKey]) {
                             fluxoCaixa[mesKey] = { receitas: [], fixos: [], variaveis: [] };

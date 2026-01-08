@@ -49,7 +49,7 @@
                 <div class="d-flex justify-content-between align-items-start mb-4">
                     <div>
                         <h2 class="fw-bold text-primary mb-0" id="readNome">-</h2>
-                        <span class="badge bg-secondary" id="readData">-</span>
+                       
                     </div>
                     <button class="btn btn-outline-primary btn-sm" onclick="toggleEdicao()">
                         <i class="bi bi-pencil-square"></i> Editar Dados
@@ -358,7 +358,7 @@
         document.getElementById('readTel').innerText = currentClient.telefone || '-';
         document.getElementById('readProfissao').innerText = d.profissao || '-';
         document.getElementById('readCivil').innerText = d.estadoCivil || '-';
-        document.getElementById('readRenda').innerText = formatarMoeda(d.rendaMensal);
+        document.getElementById('readRenda').innerText = formatarMoeda(d.rendaMensal || 0);
         document.getElementById('readObs').innerText = d.observacoesGerais || "Sem observações.";
 
         if(d.listas) listasDados = d.listas;

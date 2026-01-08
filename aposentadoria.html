@@ -216,14 +216,15 @@
             let totalAportado = inicial;
 
             for(let i = 1; i <= meses; i++) {
-                saldo = saldo * (1 + taxaMensal); // Rende
-                saldo += aporteMensal;            // Aporta
-                totalAportado += aporteMensal;
+                saldo = saldo * (1 + taxaMensal);
+                saldo += aporteMensal;
+                
+                // CORREÇÃO: Trunca as casas decimais extras a cada mês para evitar "sujeira" matemática
+                saldo = Math.round(saldo * 100) / 100; 
 
-                // Aporte Extra Anual
                 if(i % 12 === 0) {
                     saldo += aporteExtra;
-                    totalAportado += aporteExtra;
+                    saldo = Math.round(saldo * 100) / 100; // Arredonda novamente após aporte extra
                 }
             }
 

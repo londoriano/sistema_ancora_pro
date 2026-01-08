@@ -151,7 +151,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary fw-bold" onclick="salvarNovoCliente()">Criar Registro</button>
+                   <button type="button" id="btnSalvarNovo" class="btn btn-primary fw-bold" onclick="salvarNovoCliente()">Criar Registro</button>
                 </div>
             </div>
         </div>
@@ -198,7 +198,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-warning fw-bold" onclick="salvarEdicaoCliente()">Salvar Alterações</button>
+                    <button type="button" class="btn btn-warning fw-bold" onclick="salvarEdicaoCliente()" id="btnSalvarEdit">Salvar Alterações</button>
                 </div>
             </div>
         </div>
@@ -237,9 +237,24 @@
         const modalAdmin = new bootstrap.Modal(document.getElementById('modalAdminId'));
         const modalNovo = new bootstrap.Modal(document.getElementById('modalNovoCliente'));
         const modalEdit = new bootstrap.Modal(document.getElementById('modalEditarCliente'));
+        const elModalNovo = document.getElementById('modalNovoCliente');
+            elModalNovo.addEventListener('shown.bs.modal', () => {
+                document.getElementById('novoNome').focus();
+        });
+
+                // --- INSIRA ISSO AQUI: CONFIGURAÇÃO DO ENTER ---
+            // Quando der Enter no telefone, ele clica no botão salvar
+            configurarEnter('novoTel', 'btnSalvarNovo'); 
+            
+            // Bônus: Faça o mesmo para o modal de Edição (se quiser)
+            // 1. Adicione id="btnSalvarEdit" no botão de salvar edição lá no HTML
+            // 2. Descomente a linha abaixo:
+            configurarEnter('editTel', 'btnSalvarEdit');
+            // -----------------------------------------------
 
         document.getElementById('modalNovoCliente').addEventListener('show.bs.modal', function () {
-            document.getElementById('novoDataCriacao').valueAsDate = new Date();
+            // Inputs HIDDEN aceitam apenas string. Usamos ISO e pegamos a parte da data (YYYY-MM-DD)
+            document.getElementById('novoDataCriacao').value = new Date().toISOString().split('T')[0];
             toggleValor('novo');
         });
 
