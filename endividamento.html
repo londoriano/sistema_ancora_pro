@@ -309,8 +309,12 @@
                 }
 
                 const prio = d.prioridade || 7;
-                const badgePrio = `<span class="badge badge-prio-${prio} ms-2">P${prio}</span>`;
+                // Se está paga, o badge vira cinza e escreve "Concluído"
+                // Se está aberta, mantém a cor de alerta e o número da prioridade
+                const classeBadge = isPaga ? 'bg-secondary text-white' : `badge-prio-${prio}`;
+                const textoBadge = isPaga ? '<i class="bi bi-check-all"></i>' : `P${prio}`;
 
+const badgePrio = `<span class="badge ${classeBadge} ms-2 shadow-sm">${textoBadge}</span>`;
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4';
                 card.innerHTML = `
