@@ -122,6 +122,12 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label fw-bold text-info"><i class="bi bi-piggy-bank"></i> Aporte Mensal Destinado (R$)</label>
+                        <input type="number" id="objAporte" class="form-control" placeholder="Quanto vai guardar por mês?">
+                        <div class="form-text small">Essencial para calcular a data da conquista.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Descrição / Estratégia</label>
                         <textarea id="objDesc" class="form-control" rows="2" placeholder="Detalhes de como atingir..."></textarea>
                     </div>
@@ -206,7 +212,7 @@
             if(isDirty) document.getElementById('alertaNaoSalvo').classList.remove('hidden');
         }
 
-        function renderizarTela() {
+function renderizarTela() {
             const container = document.getElementById('listaObjetivos');
             container.innerHTML = '';
             let total = 0, guardado = 0;
@@ -214,17 +220,30 @@
             if(!listaObjetivos.length) { container.innerHTML = '<div class="col-12 text-center text-muted py-5">Nenhum objetivo.</div>'; }
             
             listaObjetivos.forEach((obj, idx) => {
-                // BLINDAGEM EXTRA NA RENDERIZAÇÃO
                 const vTotal = parseFloat(obj.valorTotal) || 0;
                 const vAtual = parseFloat(obj.valorAtual) || 0;
+                const vAporte = parseFloat(obj.aporte) || 0; // Captura o aporte
 
                 if(!obj.concluido) { total += vTotal; guardado += vAtual; }
                 
-                // Evita divisão por zero resultando em NaN ou Infinity
                 const pct = vTotal > 0 ? Math.min(100, (vAtual / vTotal) * 100).toFixed(0) : 0;
-                
                 const cor = pct >= 100 ? 'success' : (pct < 25 ? 'danger' : (pct < 75 ? 'warning' : 'primary'));
                 
+                // LÓGICA DE PREVISÃO
+                let previsaoHtml = '<small class="text-muted"><i class="bi bi-hourglass"></i> Tempo indefinido (sem aporte)</small>';
+                
+                if (vTotal > vAtual && vAporte > 0) {
+                    const falta = vTotal - vAtual;
+                    const meses = Math.ceil(falta / vAporte);
+                    const anos = (meses / 12).toFixed(1);
+                    
+                    // Se for menos de 1 ano, mostra meses. Se for mais, mostra anos.
+                    const textoTempo = meses <= 12 ? `${meses} meses` : `${anos} anos`;
+                    previsaoHtml = `<small class="text-info fw-bold"><i class="bi bi-clock-history"></i> Meta: ${textoTempo}</small>`;
+                } else if (vTotal <= vAtual) {
+                    previsaoHtml = `<small class="text-success fw-bold"><i class="bi bi-check-all"></i> Financeiramente Atingido!</small>`;
+                }
+
                 container.innerHTML += `
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm h-100 card-objetivo ${obj.concluido?'bg-concluido':''}">
@@ -239,15 +258,22 @@
                                     </ul>
                                 </div>
                             </div>
+                            
                             <div class="d-flex justify-content-between small text-muted mb-2">
-    <span>Prazo: ${obj.prazo || '0'}</span>
-    <span>Prioridade: ${obj.prioridade || 'Média'}</span>
-</div>
+                                <span>Aporte: <strong>${formatarMoeda(vAporte)}</strong></span>
+                                <span>Prioridade: ${obj.prioridade || 'Média'}</span>
+                            </div>
+
                             <div class="progress mb-2" style="height:10px;"><div class="progress-bar bg-${cor}" style="width:${pct}%"></div></div>
-                            <div class="d-flex justify-content-between small fw-bold">
+                            
+                            <div class="d-flex justify-content-between small fw-bold mb-2">
                                 <span>${pct}%</span><span>${formatarMoeda(vTotal)}</span>
                             </div>
-                            <div class="small text-muted mt-1 text-end">Atual: ${formatarMoeda(vAtual)}</div>
+                            
+                            <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+                                <div class="small text-muted">Atual: ${formatarMoeda(vAtual)}</div>
+                                ${previsaoHtml}
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -267,6 +293,8 @@
                 titulo, 
                 valorTotal: Math.abs(total),
                 valorAtual: Math.abs(parseFloat(document.getElementById('objValorAtual').value)||0),
+                // ADICIONE ESTA LINHA:
+                aporte: Math.abs(parseFloat(document.getElementById('objAporte').value)||0),
                 prazo: document.getElementById('objPrazo').value,
                 prioridade: document.getElementById('objPrioridade').value,
                 descricao: document.getElementById('objDesc').value,
@@ -299,6 +327,7 @@
             document.getElementById('objTitulo').value = "";
             document.getElementById('objValorTotal').value = "";
             document.getElementById('objValorAtual').value = "";
+            document.getElementById('objAporte').value = ""; // <--- ADICIONE ISTO
             document.getElementById('objDesc').value = "";
             document.getElementById('modalTitulo').innerText = "Novo Objetivo";
         }
@@ -309,6 +338,8 @@
             document.getElementById('objTitulo').value = o.titulo;
             document.getElementById('objValorTotal').value = o.valorTotal;
             document.getElementById('objValorAtual').value = o.valorAtual;
+            // ADICIONE ESTA LINHA:
+            document.getElementById('objAporte').value = o.aporte || "";
             document.getElementById('objPrazo').value = o.prazo;
             document.getElementById('objPrioridade').value = o.prioridade;
             document.getElementById('objDesc').value = o.descricao;
