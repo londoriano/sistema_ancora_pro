@@ -121,11 +121,17 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-info"><i class="bi bi-piggy-bank"></i> Aporte Mensal Destinado (R$)</label>
-                        <input type="number" id="objAporte" class="form-control" placeholder="Quanto vai guardar por mês?">
-                        <div class="form-text small">Essencial para calcular a data da conquista.</div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-info"><i class="bi bi-piggy-bank"></i> Aporte Mensal (R$)</label>
+                            <input type="number" id="objAporte" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-success"><i class="bi bi-graph-up-arrow"></i> Rentabilidade (a.a.)</label>
+                            <input type="number" id="objRentab" class="form-control" placeholder="Ex: 10" step="0.1">
+                        </div>
                     </div>
+                    <div class="form-text small mb-3 mt-0">Define o tempo real até a conquista com base nos juros compostos.</div>
 
                     <div class="mb-3">
                         <label class="form-label">Descrição / Estratégia</label>
@@ -229,19 +235,47 @@ function renderizarTela() {
                 const pct = vTotal > 0 ? Math.min(100, (vAtual / vTotal) * 100).toFixed(0) : 0;
                 const cor = pct >= 100 ? 'success' : (pct < 25 ? 'danger' : (pct < 75 ? 'warning' : 'primary'));
                 
-                // LÓGICA DE PREVISÃO
-                let previsaoHtml = '<small class="text-muted"><i class="bi bi-hourglass"></i> Tempo indefinido (sem aporte)</small>';
+                const taxaAnual = parseFloat(obj.rentabilidade) || 0; // Se não tiver, assume 0
                 
-                if (vTotal > vAtual && vAporte > 0) {
-                    const falta = vTotal - vAtual;
-                    const meses = Math.ceil(falta / vAporte);
-                    const anos = (meses / 12).toFixed(1);
+                // LÓGICA DE PREVISÃO COM JUROS COMPOSTOS (NPER)
+                let previsaoHtml = '<small class="text-muted"><i class="bi bi-hourglass"></i> Indefinido (sem aporte)</small>';
+                
+                const falta = vTotal - vAtual;
+
+                if (vTotal <= vAtual) {
+                    previsaoHtml = `<small class="text-success fw-bold"><i class="bi bi-check-all"></i> Atingido!</small>`;
+                } 
+                else if (vAporte > 0) {
+                    let meses;
                     
-                    // Se for menos de 1 ano, mostra meses. Se for mais, mostra anos.
+                    if (taxaAnual === 0) {
+                        // Cálculo linear simples (sem juros)
+                        meses = Math.ceil(falta / vAporte);
+                    } else {
+                        // Cálculo Logarítmico (Juros Compostos)
+                        // Fórmula NPER: n = ln((FV * i + PMT) / (PV * i + PMT)) / ln(1 + i)
+                        const taxaMensal = (Math.pow(1 + (taxaAnual / 100), 1/12)) - 1;
+                        
+                        // Numerador do Log
+                        const num = (vTotal * taxaMensal) + vAporte;
+                        const den = (vAtual * taxaMensal) + vAporte;
+                        
+                        // Proteção matemática
+                        if (den === 0 || num / den <= 0) {
+                            meses = 9999; // Erro matemático (impossível atingir)
+                        } else {
+                            meses = Math.ceil(Math.log(num / den) / Math.log(1 + taxaMensal));
+                        }
+                    }
+
+                    const anos = (meses / 12).toFixed(1);
                     const textoTempo = meses <= 12 ? `${meses} meses` : `${anos} anos`;
-                    previsaoHtml = `<small class="text-info fw-bold"><i class="bi bi-clock-history"></i> Meta: ${textoTempo}</small>`;
-                } else if (vTotal <= vAtual) {
-                    previsaoHtml = `<small class="text-success fw-bold"><i class="bi bi-check-all"></i> Financeiramente Atingido!</small>`;
+                    
+                    // Diferenciar visualmente se está usando juros ou não
+                    const icone = taxaAnual > 0 ? 'bi-graph-up-arrow' : 'bi-clock-history';
+                    const title = taxaAnual > 0 ? `Considerando rentabilidade de ${taxaAnual}% a.a.` : 'Considerando juros zero';
+                    
+                    previsaoHtml = `<small class="text-primary fw-bold" title="${title}"><i class="bi ${icone}"></i> Meta: ${textoTempo}</small>`;
                 }
 
                 container.innerHTML += `
@@ -295,6 +329,7 @@ function renderizarTela() {
                 valorAtual: Math.abs(parseFloat(document.getElementById('objValorAtual').value)||0),
                 // ADICIONE ESTA LINHA:
                 aporte: Math.abs(parseFloat(document.getElementById('objAporte').value)||0),
+                rentabilidade: Math.abs(parseFloat(document.getElementById('objRentab').value)||0), // <--- NOVO
                 prazo: document.getElementById('objPrazo').value,
                 prioridade: document.getElementById('objPrioridade').value,
                 descricao: document.getElementById('objDesc').value,
@@ -328,6 +363,7 @@ function renderizarTela() {
             document.getElementById('objValorTotal').value = "";
             document.getElementById('objValorAtual').value = "";
             document.getElementById('objAporte').value = ""; // <--- ADICIONE ISTO
+            document.getElementById('objRentab').value = "10"; // Sugestão padrão: 10% a.a.
             document.getElementById('objDesc').value = "";
             document.getElementById('modalTitulo').innerText = "Novo Objetivo";
         }
@@ -340,6 +376,7 @@ function renderizarTela() {
             document.getElementById('objValorAtual').value = o.valorAtual;
             // ADICIONE ESTA LINHA:
             document.getElementById('objAporte').value = o.aporte || "";
+            document.getElementById('objRentab').value = o.rentabilidade !== undefined ? o.rentabilidade : 10; // <--- NOVO
             document.getElementById('objPrazo').value = o.prazo;
             document.getElementById('objPrioridade').value = o.prioridade;
             document.getElementById('objDesc').value = o.descricao;

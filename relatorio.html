@@ -500,10 +500,10 @@
                 objs.forEach(o => {
                     const custo = parseFloat(o.valorTotal || 0);
                     const jaTenho = parseFloat(o.valorAtual || 0);
-                    const aporte = parseFloat(o.aporte || 0); // <--- O NOVO DADO CAPTURADO
+                    const aporte = parseFloat(o.aporte || 0);
+                    const taxaAnual = parseFloat(o.rentabilidade || 0); // <--- LER A RENTABILIDADE
                     const falta = Math.max(0, custo - jaTenho);
                     
-                    // LÓGICA DE PREVISÃO (Mesma do Modal)
                     let estimativa = "Sem aporte definido";
                     let corEstimativa = "text-muted";
                     let icone = "bi-hourglass";
@@ -512,16 +512,31 @@
                         estimativa = "Concluído!";
                         corEstimativa = "text-success fw-bold";
                         icone = "bi-check-circle-fill";
-                    } else if (aporte > 0) {
-                        const meses = Math.ceil(falta / aporte);
+                    } 
+                    else if (aporte > 0) {
+                        let meses;
+                        if (taxaAnual === 0) {
+                            meses = Math.ceil(falta / aporte);
+                        } else {
+                            // Mesma fórmula NPER do sistema principal
+                            const tm = (Math.pow(1 + (taxaAnual / 100), 1/12)) - 1;
+                            const num = (custo * tm) + aporte;
+                            const den = (jaTenho * tm) + aporte;
+                            meses = Math.ceil(Math.log(num / den) / Math.log(1 + tm));
+                        }
+                        
                         const anos = (meses / 12).toFixed(1);
                         estimativa = meses <= 12 ? `${meses} meses` : `~${anos} anos`;
+                        
+                        // Adiciona asterisco se tiver juros
+                        if(taxaAnual > 0) estimativa += ` (${taxaAnual}% a.a.)`;
+                        
                         corEstimativa = "text-dark fw-bold";
                         icone = "bi-calendar-check";
                     } else {
-                        icone = "bi-exclamation-circle"; // Alerta visual se não tiver aporte
+                        icone = "bi-exclamation-circle";
                     }
-
+                    
                     // LAYOUT IMPRESSO OTIMIZADO
                     objCont.innerHTML += `
                     <div class="col-4">
