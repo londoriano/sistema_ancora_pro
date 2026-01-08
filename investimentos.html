@@ -303,12 +303,12 @@ document.getElementById('alertaNaoSalvo').classList.add('hidden');
             const index = indexVal === "" ? -1 : parseInt(indexVal);
 
             const nome = document.getElementById('invNome').value;
-    const valor = parseFloat(document.getElementById('invValor').value);
+            const valor = parseFloat(document.getElementById('invValor').value) || 0;
 
-    if (!nome || isNaN(valor)) {
-        exibirMensagem("Nome e Valor Atual são obrigatórios!", "aviso");
-        return;
-    }
+            if (!nome || isNaN(valor)) {
+                exibirMensagem("Nome e Valor Atual são obrigatórios!", "aviso");
+                return;
+            }
 
             const novoAtivo = {
                 nome: nome,

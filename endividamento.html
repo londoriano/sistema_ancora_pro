@@ -368,7 +368,7 @@
             const indexVal = document.getElementById('editIndex').value;
             const index = indexVal === "" ? -1 : parseInt(indexVal);
             const desc = document.getElementById('divDesc').value;
-            const valorAtual = parseFloat(document.getElementById('divValorAtual').value);
+            const valorAtual = parseFloat(document.getElementById('divValorAtual').value) || 0;
 
             if (!desc || isNaN(valorAtual)) {
                 exibirMensagem("Preencha a Descrição e o Valor Atual.", "aviso");

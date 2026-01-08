@@ -268,6 +268,8 @@ window.onload = async function() {
     } catch(e) {
         console.error("Erro na inicialização:", e);
     }
-    document.onmousemove = resetarTimer; 
-    document.onkeypress = resetarTimer;
+   // document.onmousemove removido intencionalmente para performance
+    window.onclick = resetarTimer;   // Reseta apenas ao clicar
+    window.onkeypress = resetarTimer; // Reseta ao digitar
+
 };

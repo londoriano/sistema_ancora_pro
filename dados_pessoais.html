@@ -425,14 +425,44 @@
 
     function renderizarListaEdicao(tipo) {
         const tbody = document.getElementById(`lista-${tipo}`);
+        if (!tbody) return; // Segurança extra
         tbody.innerHTML = '';
-        (listasDados[tipo] || []).forEach((item, index) => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${item.col1}</td>
-                    <td class="text-end">${formatarMoeda(item.valor)}</td>
-                    <td style="width:30px"><i class="bi bi-x text-danger cursor-pointer" onclick="removerItem('${tipo}', ${index})"></i></td>
-                </tr>`;
+        
+        const lista = listasDados[tipo] || [];
+        
+        lista.forEach((item, index) => {
+            let htmlLinha = '';
+
+            // Lógica Exclusiva para OBJETIVOS (Exibe o Prazo)
+            if (tipo === 'objetivos') {
+                const prazo = item.col3 ? `<span class="badge bg-light text-dark border ms-2">${item.col3}</span>` : '';
+                htmlLinha = `
+                    <tr>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${item.col1}</span>
+                                ${prazo}
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold" style="width: 100px;">${formatarMoeda(item.valor)}</td>
+                        <td style="width:30px" class="text-center">
+                            <i class="bi bi-x-lg text-danger cursor-pointer" onclick="removerItem('${tipo}', ${index})"></i>
+                        </td>
+                    </tr>`;
+            } 
+            // Lógica Padrão para as outras listas (Dívidas, Investimentos, Gastos)
+            else {
+                htmlLinha = `
+                    <tr>
+                        <td>${item.col1}</td>
+                        <td class="text-end fw-bold" style="width: 100px;">${formatarMoeda(item.valor)}</td>
+                        <td style="width:30px" class="text-center">
+                            <i class="bi bi-x-lg text-danger cursor-pointer" onclick="removerItem('${tipo}', ${index})"></i>
+                        </td>
+                    </tr>`;
+            }
+
+            tbody.innerHTML += htmlLinha;
         });
     }
 

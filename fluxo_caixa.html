@@ -136,7 +136,7 @@
                         // Adiciona garantindo valor positivo
                         fluxoCaixa[mesKey][categoria].push({
                             desc: t.descricao || "Importado",
-                            valor: Math.abs(parseFloat(t.valor))
+                            valor: Math.abs(parseFloat(t.valor) || 0)
                         });
                         count++;
                     });
@@ -300,7 +300,7 @@
             const descEl = document.getElementById(`desc-${mesKey}-${tipo}`);
             const valEl = document.getElementById(`val-${mesKey}-${tipo}`);
             const desc = descEl.value;
-            const valor = parseFloat(valEl.value);
+           const valor = parseFloat(valEl.value) || 0;
             
             if(!desc || isNaN(valor)) return;
             
